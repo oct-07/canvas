@@ -1,118 +1,159 @@
-import { memo } from 'react';
-import { Handle, Position } from '@xyflow/react';
-import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
-import useCanvasStore from '@/store/canvasStore';
+import useCanvasStore from "@/store/canvasStore";
+import { Handle, Position } from "@xyflow/react";
+import { memo, useCallback } from "react";
+import FloatingEditor from "../FloatingEditor";
 
-/**
- * 图片节点组件 - 显示图片缩略图的节点
- * 左侧为 Input（接收图片），右侧为 Output（输出图片）
- * 数据类型: IMAGE
- */
 const ImageNode = memo(({ id, data, selected }) => {
-  const removeNode = useCanvasStore((state) => state.removeNode);
+  const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
+  const showActiveEditor = useCanvasStore((state) => state.showActiveEditor);
+  const setActiveNodeId = useCanvasStore((state) => state.setActiveNodeId);
+  const setNodeEditorPosition = useCanvasStore((state) => state.setNodeEditorPosition);
+  const setNodeEditorData = useCanvasStore((state) => state.setNodeEditorData);
+
+  const activeNodeId = useCanvasStore((state) => state.activeNodeId);
+  const nodeEditors = useCanvasStore((state) => state.nodeEditors);
+  const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
+  const isThisEditorOpen = activeNodeId === id && !!editor?.visible;
+
+  const handleNodeClick = useCallback(
+    (e) => {
+      e.stopPropagation();
+      if (isThisEditorOpen) {
+        hideActiveEditor(id);
+        return;
+      }
+
+      showActiveEditor(id, "image");
+      setActiveNodeId(id);
+
+      const node = useCanvasStore.getState().nodes.find((item) => item.id === id);
+      if (!node) return;
+
+      const viewport = useCanvasStore.getState().viewport;
+      const screenPos = {
+        left: node.position.x * viewport.zoom + viewport.x,
+        top: node.position.y * viewport.zoom + viewport.y + 150,
+      };
+      useCanvasStore.setState((state) => ({
+        activeNodeId: id,
+        nodeEditors: {
+          ...state.nodeEditors,
+          [id]: {
+            visible: true,
+            nodeType: 'image',
+            position: screenPos,
+            data: data || {},
+          },
+        },
+        panelPos: screenPos,
+      }));
+    },
+    [id, isThisEditorOpen, hideActiveEditor, showActiveEditor, setActiveNodeId, data],
+  );
+
+  const nodeData = editor?.data ?? data ?? {};
 
   return (
     <div
+      onClick={handleNodeClick}
       style={{
-        width: '200px',
-        background: '#262626',
-        borderRadius: '12px',
-        border: selected ? '2px solid #177ddc' : '1px solid #303030',
-        overflow: 'hidden',
+        position: "relative",
+        width: "220px",
+        background: "#262626",
+        borderRadius: 12,
+        border: selected ? "2px solid #177ddc" : "1px solid #303030",
+        overflow: "visible",
         boxShadow: selected
-          ? '0 0 20px rgba(23, 125, 220, 0.3)'
-          : '0 4px 12px rgba(0,0,0,0.3)',
-        transition: 'all 0.2s ease',
+          ? "0 0 20px rgba(23, 125, 220, 0.3)"
+          : "0 4px 12px rgba(0,0,0,0.3)",
+        transition: "all 0.2s ease",
+        cursor: "pointer",
       }}
     >
-      {/* 左侧 Input 端口 - 接收图片输入 */}
       <Handle
         type="target"
         position={Position.Left}
         id="input"
         style={{
-          background: '#1890ff',
+          background: "#1890ff",
           width: 10,
           height: 10,
-          border: '2px solid #262626',
+          border: "2px solid #262626",
           left: -5,
         }}
       />
 
       <div
         style={{
-          height: '150px',
-          background: `url(${data.url || data.thumbnail}) center/cover no-repeat`,
-          position: 'relative',
+          height: "150px",
+          background: `url(${nodeData.url || nodeData.thumbnail}) center/cover no-repeat`,
+        }}
+      />
+
+      <div
+        style={{
+          padding: "6px 10px",
+          background: "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
         }}
       >
-        <div
+        <span
           style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            padding: '8px',
-            background: 'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            opacity: selected ? 1 : 0,
-            transition: 'opacity 0.2s',
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 500,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            display: "block",
           }}
         >
-          <EditOutlined
-            style={{ color: '#fff', cursor: 'pointer', fontSize: '14px' }}
-            onClick={() => console.log('Edit image:', id)}
-          />
-          <DeleteOutlined
-            style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: '14px' }}
-            onClick={() => removeNode(id)}
-          />
-        </div>
-
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: '8px',
-            background: 'linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)',
-          }}
-        >
-          <span
-            style={{
-              color: '#fff',
-              fontSize: '12px',
-              fontWeight: 500,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              display: 'block',
-            }}
-          >
-            {data.name || 'Image'}
-          </span>
-        </div>
+          {nodeData.name || "Image"}
+        </span>
       </div>
 
-      {/* 右侧 Output 端口 - 输出图片 */}
       <Handle
         type="source"
         position={Position.Right}
         id="output"
         style={{
-          background: '#1890ff',
+          background: "#1890ff",
           width: 10,
           height: 10,
-          border: '2px solid #262626',
+          border: "2px solid #262626",
           right: -5,
         }}
       />
+
+      {isThisEditorOpen && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: "100%",
+            marginTop: 8,
+            zIndex: 9999,
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+        >
+          <FloatingEditor
+            visible
+            position={{ left: 0, top: 0 }}
+            nodeType="image"
+            data={nodeData}
+            onSubmit={({ prompt, style, params, imageUrl }) => {
+              const payload = { prompt, style, params };
+              if (imageUrl) payload.imageUrl = imageUrl;
+              useCanvasStore.getState().updateNodeData(id, payload);
+            }}
+            onClose={() => hideActiveEditor(id)}
+          />
+        </div>
+      )}
     </div>
   );
 });
 
-ImageNode.displayName = 'ImageNode';
-
+ImageNode.displayName = "ImageNode";
 export default ImageNode;

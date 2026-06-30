@@ -1,5 +1,6 @@
 /**
  * UI 状态管理 Slice
+ * 全局单例悬浮编辑面板相关状态集中在此处管理
  */
 
 /**
@@ -16,7 +17,10 @@ export const uiInitialState = {
     target: null,
     targetId: null,
   },
-}
+  activeNodeId: null,
+  panelPos: null,
+  nodeEditors: {},
+};
 
 /**
  * 创建 UI Slice
@@ -25,29 +29,22 @@ export const uiInitialState = {
  * @returns {object} UI相关的 state 和 actions
  */
 export const createUISlice = (getStore, setStore) => ({
-  /**
-   * 工具状态
-   */
   currentTool: 'select',
   setCurrentTool: (tool) => setStore({ currentTool: tool }),
 
-  /**
-   * 侧边栏状态
-   */
   isSidebarOpen: true,
-  toggleSidebar: () =>
-    setStore((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  toggleSidebar: () => setStore((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
-  /**
-   * 预览状态
-   */
   isPreviewOpen: false,
-  togglePreview: () =>
-    setStore((state) => ({ isPreviewOpen: !state.isPreviewOpen })),
+  togglePreview: () => setStore((state) => ({ isPreviewOpen: !state.isPreviewOpen })),
 
-  /**
-   * 上下文菜单
-   */
+  contextMenu: {
+    visible: false,
+    x: 0,
+    y: 0,
+    target: null,
+    targetId: null,
+  },
   showContextMenu: (x, y, target, targetId) => {
     setStore({
       contextMenu: {
@@ -57,12 +54,74 @@ export const createUISlice = (getStore, setStore) => ({
         target,
         targetId,
       },
-    })
+    });
   },
-
   hideContextMenu: () => {
     setStore((state) => ({
       contextMenu: { ...state.contextMenu, visible: false },
-    }))
+    }));
   },
-})
+
+  activeNodeId: null,
+  setActiveNodeId: (nodeId) => setStore({ activeNodeId: nodeId }),
+
+  panelPos: null,
+  setPanelPos: (panelPos) => setStore({ panelPos }),
+
+  nodeEditors: {},
+  showActiveEditor: (nodeId, nodeType) => {
+    setStore((state) => ({
+      nodeEditors: {
+        ...state.nodeEditors,
+        [nodeId]: {
+          visible: true,
+          nodeType,
+          position: null,
+          data: null,
+        },
+      },
+    }));
+  },
+  hideActiveEditor: (nodeId) => {
+    setStore((state) => {
+      if (!nodeId) {
+        return { nodeEditors: {}, activeNodeId: null, panelPos: null };
+      }
+      const next = { ...state.nodeEditors };
+      delete next[nodeId];
+      const isActive = state.activeNodeId === nodeId;
+      return {
+        nodeEditors: next,
+        ...(isActive ? { activeNodeId: null, panelPos: null } : {}),
+      };
+    });
+  },
+  hideAllActiveEditors: () => {
+    setStore({ nodeEditors: {}, activeNodeId: null, panelPos: null });
+  },
+  setNodeEditorPosition: (nodeId, position) => {
+    setStore((state) => {
+      const current = state.nodeEditors[nodeId];
+      if (!current) return state;
+      return {
+        nodeEditors: {
+          ...state.nodeEditors,
+          [nodeId]: { ...current, position },
+        },
+        ...(state.activeNodeId === nodeId ? { panelPos: position } : {}),
+      };
+    });
+  },
+  setNodeEditorData: (nodeId, data) => {
+    setStore((state) => {
+      const current = state.nodeEditors[nodeId];
+      if (!current) return state;
+      return {
+        nodeEditors: {
+          ...state.nodeEditors,
+          [nodeId]: { ...current, data },
+        },
+      };
+    });
+  },
+});

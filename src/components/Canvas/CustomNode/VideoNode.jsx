@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import { DeleteOutlined, PlayCircleOutlined } from '@ant-design/icons';
+import FloatingEditor from '../FloatingEditor';
 import useCanvasStore from '@/store/canvasStore';
 
 /**
@@ -10,15 +11,62 @@ import useCanvasStore from '@/store/canvasStore';
  */
 const VideoNode = memo(({ id, data, selected }) => {
   const removeNode = useCanvasStore((state) => state.removeNode);
+  const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
+  const showActiveEditor = useCanvasStore((state) => state.showActiveEditor);
+  const setActiveNodeId = useCanvasStore((state) => state.setActiveNodeId);
+  const setNodeEditorPosition = useCanvasStore((state) => state.setNodeEditorPosition);
+  const setNodeEditorData = useCanvasStore((state) => state.setNodeEditorData);
+
+  const activeNodeId = useCanvasStore((state) => state.activeNodeId);
+  const nodeEditors = useCanvasStore((state) => state.nodeEditors);
+  const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
+  const isThisEditorOpen = activeNodeId === id && !!editor?.visible;
+
+  const handleNodeClick = (e) => {
+    e.stopPropagation();
+    if (isThisEditorOpen) {
+      hideActiveEditor(id);
+      return;
+    }
+
+    showActiveEditor(id, 'video');
+    setActiveNodeId(id);
+
+    const node = useCanvasStore.getState().nodes.find((item) => item.id === id);
+    if (!node) return;
+
+    const viewport = useCanvasStore.getState().viewport;
+    const screenPos = {
+      left: node.position.x * viewport.zoom + viewport.x,
+      top: node.position.y * viewport.zoom + viewport.y + 150,
+    };
+    useCanvasStore.setState((state) => ({
+      activeNodeId: id,
+      nodeEditors: {
+        ...state.nodeEditors,
+        [id]: {
+          visible: true,
+          nodeType: 'video',
+          position: screenPos,
+          data: data || {},
+        },
+      },
+      panelPos: screenPos,
+    }));
+  };
+
+  const nodeData = editor?.data ?? data ?? {};
 
   return (
     <div
+      onClick={handleNodeClick}
       style={{
+        position: 'relative',
         width: '240px',
         background: '#262626',
         borderRadius: '12px',
         border: selected ? '2px solid #177ddc' : '1px solid #303030',
-        overflow: 'hidden',
+        overflow: 'visible',
         boxShadow: selected
           ? '0 0 20px rgba(23, 125, 220, 0.3)'
           : '0 4px 12px rgba(0,0,0,0.3)',
@@ -42,7 +90,7 @@ const VideoNode = memo(({ id, data, selected }) => {
       <div
         style={{
           height: '160px',
-          background: `url(${data.thumbnail || 'https://picsum.photos/240/160'}) center/cover no-repeat`,
+          background: `url(${nodeData.thumbnail || 'https://picsum.photos/240/160'}) center/cover no-repeat`,
           position: 'relative',
           display: 'flex',
           alignItems: 'center',
@@ -108,7 +156,7 @@ const VideoNode = memo(({ id, data, selected }) => {
               flex: 1,
             }}
           >
-            {data.name || 'Video'}
+            {nodeData.name || 'Video'}
           </span>
         </div>
       </div>
@@ -126,6 +174,34 @@ const VideoNode = memo(({ id, data, selected }) => {
           right: -5,
         }}
       />
+
+      {isThisEditorOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: '100%',
+            marginTop: 8,
+            zIndex: 9999,
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
+        >
+          <FloatingEditor
+            visible
+            position={{ left: 0, top: 0 }}
+            nodeType="video"
+            data={nodeData}
+            onSubmit={({ prompt, style, params, imageUrl }) => {
+              const payload = { prompt, style, params };
+              if (imageUrl) payload.imageUrl = imageUrl;
+              useCanvasStore.getState().updateNodeData(id, payload);
+            }}
+            onClose={() => hideActiveEditor(id)}
+          />
+        </div>
+      )}
     </div>
   );
 });

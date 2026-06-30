@@ -5,7 +5,8 @@ import useCanvasStore from '@/store/canvasStore';
 
 /**
  * 视频节点组件 - 显示视频缩略图的节点
- * 支持播放图标、选中状态和删除操作
+ * 左侧为 Input（接收图片或视频），右侧为 Output（输出视频）
+ * 数据类型: VIDEO
  */
 const VideoNode = memo(({ id, data, selected }) => {
   const removeNode = useCanvasStore((state) => state.removeNode);
@@ -24,10 +25,18 @@ const VideoNode = memo(({ id, data, selected }) => {
         transition: 'all 0.2s ease',
       }}
     >
+      {/* 左侧 Input 端口 - 接收图片或视频输入 */}
       <Handle
         type="target"
-        position={Position.Top}
-        style={{ background: '#177ddc', width: 8, height: 8 }}
+        position={Position.Left}
+        id="input"
+        style={{
+          background: '#722ed1',
+          width: 10,
+          height: 10,
+          border: '2px solid #262626',
+          left: -5,
+        }}
       />
 
       <div
@@ -104,10 +113,18 @@ const VideoNode = memo(({ id, data, selected }) => {
         </div>
       </div>
 
+      {/* 右侧 Output 端口 - 输出视频 */}
       <Handle
         type="source"
-        position={Position.Bottom}
-        style={{ background: '#177ddc', width: 8, height: 8 }}
+        position={Position.Right}
+        id="output"
+        style={{
+          background: '#722ed1',
+          width: 10,
+          height: 10,
+          border: '2px solid #262626',
+          right: -5,
+        }}
       />
     </div>
   );

@@ -5,7 +5,8 @@ import useCanvasStore from '@/store/canvasStore';
 
 /**
  * 图片节点组件 - 显示图片缩略图的节点
- * 支持选中状态、编辑和删除操作
+ * 左侧为 Input（接收图片），右侧为 Output（输出图片）
+ * 数据类型: IMAGE
  */
 const ImageNode = memo(({ id, data, selected }) => {
   const removeNode = useCanvasStore((state) => state.removeNode);
@@ -24,10 +25,18 @@ const ImageNode = memo(({ id, data, selected }) => {
         transition: 'all 0.2s ease',
       }}
     >
+      {/* 左侧 Input 端口 - 接收图片输入 */}
       <Handle
         type="target"
-        position={Position.Top}
-        style={{ background: '#177ddc', width: 8, height: 8 }}
+        position={Position.Left}
+        id="input"
+        style={{
+          background: '#1890ff',
+          width: 10,
+          height: 10,
+          border: '2px solid #262626',
+          left: -5,
+        }}
       />
 
       <div
@@ -87,10 +96,18 @@ const ImageNode = memo(({ id, data, selected }) => {
         </div>
       </div>
 
+      {/* 右侧 Output 端口 - 输出图片 */}
       <Handle
         type="source"
-        position={Position.Bottom}
-        style={{ background: '#177ddc', width: 8, height: 8 }}
+        position={Position.Right}
+        id="output"
+        style={{
+          background: '#1890ff',
+          width: 10,
+          height: 10,
+          border: '2px solid #262626',
+          right: -5,
+        }}
       />
     </div>
   );

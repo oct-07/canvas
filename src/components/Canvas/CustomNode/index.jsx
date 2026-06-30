@@ -9,14 +9,11 @@ import VideoNode from './VideoNode'
 
 /**
  * 自定义节点组件 - 通用的文本/AI 节点
- * 根据节点类型显示不同样式和图标
+ * 左侧为 Input，右侧为 Output
  */
 const CustomNode = ({ id, data, type, selected }) => {
   const { label = '', description = '', icon } = data
 
-/**
- * 根据节点类型返回对应的图标
- */
   const getNodeIcon = () => {
     if (icon) return icon
     switch (type) {
@@ -31,9 +28,6 @@ const CustomNode = ({ id, data, type, selected }) => {
     }
   }
 
-/**
- * 根据节点类型返回对应的样式配置
- */
   const getNodeStyle = () => {
     switch (type) {
       case 'ai':
@@ -96,15 +90,17 @@ const CustomNode = ({ id, data, type, selected }) => {
 
   return (
     <div className={`canvas-node canvas-node-${type}`} style={nodeStyle}>
-      {/* 左侧连接点 */}
+      {/* 左侧 Input 端口 */}
       <Handle
         type="target"
         position={Position.Left}
+        id="input"
         style={{
-          background: '#434343',
-          width: 8,
-          height: 8,
+          background: getNodeStyle().borderColor,
+          width: 10,
+          height: 10,
           border: '2px solid #262626',
+          left: -5,
         }}
       />
 
@@ -120,15 +116,17 @@ const CustomNode = ({ id, data, type, selected }) => {
         </div>
       )}
 
-      {/* 右侧连接点 */}
+      {/* 右侧 Output 端口 */}
       <Handle
         type="source"
         position={Position.Right}
+        id="output"
         style={{
-          background: '#434343',
-          width: 8,
-          height: 8,
+          background: getNodeStyle().borderColor,
+          width: 10,
+          height: 10,
           border: '2px solid #262626',
+          right: -5,
         }}
       />
     </div>

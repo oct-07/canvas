@@ -1,0 +1,391 @@
+/* 全局样式 - 画布、弹窗通用样式 */
+
+/* ==================== React Flow 样式覆盖 ==================== */
+
+/* 画布容器 */
+.react-flow__renderer {
+  background: transparent !important;
+}
+
+.react-flow__background {
+  background-color: var(--bg-canvas, #0d0d0d) !important;
+}
+
+.react-flow__background pattern circle {
+  fill: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* 节点通用样式 */
+.react-flow__node {
+  cursor: grab;
+}
+
+.react-flow__node:active {
+  cursor: grabbing;
+}
+
+.react-flow__node.selected {
+  outline: 2px solid #177ddc !important;
+  outline-offset: 2px;
+}
+
+.react-flow__node:hover {
+  outline: 1px solid rgba(23, 125, 220, 0.5) !important;
+  outline-offset: 1px;
+}
+
+/* 边线样式 */
+.react-flow__edge-path {
+  stroke: #434343 !important;
+  stroke-width: 2 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: #177ddc !important;
+  stroke-width: 3 !important;
+}
+
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke: #177ddc !important;
+}
+
+/* 边箭头 */
+.react-flow__arrowhead {
+  fill: #434343 !important;
+}
+
+/* 控制面板 */
+.react-flow__controls {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.react-flow__controls-button {
+  background: #262626 !important;
+  border-bottom: 1px solid #303030 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #303030 !important;
+}
+
+.react-flow__controls-button svg {
+  fill: currentColor !important;
+}
+
+/* 小地图 */
+.react-flow__minimap {
+  background: #1f1f1f !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+}
+
+.react-flow__minimap-mask {
+  fill: rgba(23, 125, 220, 0.1) !important;
+}
+
+/* 拖拽样式 */
+.react-flow__nodesselection-rect {
+  background: rgba(23, 125, 220, 0.1) !important;
+  border: 1px dashed #177ddc !important;
+}
+
+.react-flow__selection {
+  background: rgba(23, 125, 220, 0.1) !important;
+  border: 1px dashed #177ddc !important;
+}
+
+/* ==================== 通用弹窗样式 ==================== */
+
+/* 自定义弹窗/模态框 */
+.canvas-modal {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.canvas-modal .ant-modal-content {
+  padding: 0;
+}
+
+.canvas-modal .ant-modal-header {
+  padding: 16px 24px;
+  margin: 0;
+}
+
+.canvas-modal .ant-modal-body {
+  padding: 24px;
+}
+
+.canvas-modal .ant-modal-footer {
+  padding: 16px 24px;
+  margin: 0;
+}
+
+/* ==================== 工具栏样式 ==================== */
+
+.canvas-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #1f1f1f;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.canvas-toolbar .ant-btn {
+  padding: 4px 12px;
+  height: 32px;
+}
+
+/* ==================== 侧边栏样式 ==================== */
+
+.canvas-sidebar {
+  height: 100%;
+  background: #1f1f1f;
+  border-right: 1px solid #303030;
+  overflow-y: auto;
+}
+
+.canvas-sidebar .ant-collapse {
+  background: transparent;
+  border: none;
+}
+
+.canvas-sidebar .ant-collapse-item {
+  border-bottom: 1px solid #303030;
+}
+
+.canvas-sidebar .ant-collapse-header {
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* ==================== 右键菜单样式 ==================== */
+
+.canvas-context-menu {
+  min-width: 160px;
+  background: #1f1f1f;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.canvas-context-menu .ant-dropdown-menu {
+  padding: 4px;
+  background: transparent;
+  border-radius: 6px;
+}
+
+.canvas-context-menu .ant-dropdown-menu-item {
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.canvas-context-menu .ant-dropdown-menu-item:hover {
+  background: rgba(23, 125, 220, 0.1);
+}
+
+.canvas-context-menu .ant-dropdown-menu-item-divider {
+  background: #303030;
+  margin: 4px 0;
+}
+
+/* ==================== 节点样式 ==================== */
+
+/* 基础节点 */
+.canvas-node {
+  padding: 12px 16px;
+  background: #262626;
+  border: 1px solid #303030;
+  border-radius: 8px;
+  min-width: 150px;
+  max-width: 300px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.canvas-node:hover {
+  border-color: #434343;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.canvas-node.selected {
+  border-color: #177ddc;
+  box-shadow: 0 0 0 2px rgba(23, 125, 220, 0.2);
+}
+
+.canvas-node-header {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 8px;
+}
+
+.canvas-node-content {
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 节点类型样式 */
+.canvas-node-text {
+  /* 文本节点 */
+}
+
+.canvas-node-image {
+  /* 图片节点 */
+}
+
+.canvas-node-ai {
+  border-color: #722ed1;
+  background: linear-gradient(135deg, #262626 0%, #1f1f1f 100%);
+}
+
+.canvas-node-ai.selected {
+  border-color: #722ed1;
+  box-shadow: 0 0 0 2px rgba(114, 46, 209, 0.2);
+}
+
+/* ==================== 提示输入框样式 ==================== */
+
+.prompt-input-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #1f1f1f;
+  border-radius: 12px;
+  border: 1px solid #303030;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.prompt-input-container .ant-input {
+  background: transparent !important;
+  border: none !important;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.prompt-input-container .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.prompt-input-container .ant-input:focus {
+  box-shadow: none !important;
+}
+
+/* ==================== 上传预览样式 ==================== */
+
+.upload-preview-container {
+  position: relative;
+  display: inline-block;
+}
+
+.upload-preview-image {
+  border-radius: 8px;
+  border: 2px solid #303030;
+  object-fit: cover;
+}
+
+.upload-preview-image:hover {
+  border-color: #177ddc;
+}
+
+.upload-preview-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.upload-preview-container:hover .upload-preview-remove {
+  opacity: 1;
+}
+
+/* ==================== 动作栏样式 ==================== */
+
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  background: #1f1f1f;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.action-bar-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.action-bar-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.action-bar-item.active {
+  background: rgba(23, 125, 220, 0.15);
+  color: #177ddc;
+}
+
+/* ==================== 动画过渡 ==================== */
+
+.fade-enter {
+  opacity: 0;
+}
+
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity 200ms ease;
+}
+
+.fade-exit {
+  opacity: 1;
+}
+
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.slide-enter {
+  opacity: 0;
+  transform: translateY(-10px);
+}
+
+.slide-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 200ms ease;
+}
+
+.slide-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.slide-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: all 200ms ease;
+}

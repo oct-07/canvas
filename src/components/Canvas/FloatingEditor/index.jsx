@@ -56,10 +56,10 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
   const wrapperStyle = useMemo(() => {
     if (!visible) return { display: "none" };
     return {
-      position: "absolute",
-      left: 0,
-      top: "100%",
-      marginTop: 8,
+      position: "fixed",
+      left: "50%",
+      top: "calc(50% + 100px)",
+      transform: "translateX(-50%)",
       zIndex: 9999,
       width: 820,
       borderRadius: 12,
@@ -68,6 +68,9 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
       boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
       padding: 20,
       overflow: "hidden",
+      transition: "all 0.25s ease",
+      display: "flex",
+      flexDirection: "column",
     };
   }, [visible]);
 

@@ -134,8 +134,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
           onUploadRefImage={handleUploadRefImage}
         />
 
-        {/* 2. 中间提示词输入 */}
-        <PromptInputArea prompt={prompt} onChangePrompt={setPrompt} />
+        <PromptInputArea html={prompt} onChangeHtml={setPrompt} />
 
         {/* 3. 底部全部参数工具栏 */}
         <BottomParamToolbar

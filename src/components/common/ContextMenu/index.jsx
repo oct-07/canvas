@@ -3,6 +3,10 @@ import { createPortal } from 'react-dom';
 import { CloudUploadOutlined, SaveOutlined, PlusOutlined, UndoOutlined, RedoOutlined, SnippetsOutlined } from '@ant-design/icons';
 import './index.css';
 
+/**
+ * 右键菜单组件 - 通用的右键上下文菜单
+ * 支持菜单位置自动调整、点击外部关闭、ESC 关闭
+ */
 const ContextMenu = ({
   visible,
   position = { x: 0, y: 0 },
@@ -11,6 +15,7 @@ const ContextMenu = ({
 }) => {
   const menuRef = useRef(null);
 
+  // 点击菜单外部或按 ESC 键时关闭菜单
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -35,6 +40,7 @@ const ContextMenu = ({
     };
   }, [visible, onClose]);
 
+  // 调整菜单位置确保在视口内可见
   useEffect(() => {
     if (visible && menuRef.current) {
       const menu = menuRef.current;
@@ -103,6 +109,9 @@ const ContextMenu = ({
     },
   ];
 
+/**
+ * 处理菜单项点击
+ */
   const handleItemClick = (item) => {
     if (item.disabled) return;
     onAction?.(item.key);

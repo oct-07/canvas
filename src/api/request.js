@@ -3,6 +3,10 @@ import { message } from 'antd'
 import axios from 'axios'
 
 // 创建 axios 实例
+/**
+ * 创建 axios 实例，配置请求/响应拦截器
+ * 自动添加 token、处理错误、标准化响应格式
+ */
 const createAxiosInstance = (options = {}) => {
   const instance = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || '/api',

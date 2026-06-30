@@ -5,6 +5,10 @@ import useCanvasStore from '@/store/canvasStore'
 
 const { TabPane } = Tabs;
 
+/**
+ * 侧边栏组件 - 素材选择面板
+ * 显示图片和视频素材，支持拖拽到画布
+ */
 const SideBar = ({ collapsed, onToggle }) => {
   const {
     materials,
@@ -16,12 +20,18 @@ const SideBar = ({ collapsed, onToggle }) => {
 
   const [draggedItem, setDraggedItem] = useState(null);
 
+/**
+ * 开始拖拽素材，将素材数据存入 dataTransfer
+ */
   const handleDragStart = useCallback((e, item) => {
     setDraggedItem(item);
     e.dataTransfer.setData('application/json', JSON.stringify(item));
     e.dataTransfer.effectAllowed = 'copy';
   }, []);
 
+/**
+ * 拖拽结束时清除拖拽状态
+ */
   const handleDragEnd = useCallback(() => {
     setDraggedItem(null);
   }, []);

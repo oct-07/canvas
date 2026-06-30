@@ -3,6 +3,10 @@ import { Handle, Position } from '@xyflow/react';
 import { DeleteOutlined, PlayCircleOutlined } from '@ant-design/icons';
 import useCanvasStore from '@/store/canvasStore';
 
+/**
+ * 视频节点组件 - 显示视频缩略图的节点
+ * 支持播放图标、选中状态和删除操作
+ */
 const VideoNode = memo(({ id, data, selected }) => {
   const removeNode = useCanvasStore((state) => state.removeNode);
 

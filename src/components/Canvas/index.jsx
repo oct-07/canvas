@@ -19,6 +19,10 @@ import ContextMenu from './ContextMenu';
 import ToolBar from './ToolBar';
 import SideBar from './SideBar';
 
+/**
+ * Canvas 内容组件 - 包含画布主体逻辑
+ * 处理节点/边的交互、右键菜单、拖拽放置等事件
+ */
 const CanvasContent = () => {
   const reactFlowWrapper = useRef(null);
   const { screenToFlowPosition } = useReactFlow();
@@ -48,7 +52,9 @@ const CanvasContent = () => {
     removeNode,
   } = useCanvasStore();
 
-  // 连接边
+/**
+ * 处理节点连接事件，创建新的边并保存历史记录
+ */
   const handleConnect = useCallback(
     (connection) => {
       const newEdge = {
@@ -64,7 +70,9 @@ const CanvasContent = () => {
     [edges, setEdges, saveHistory]
   );
 
-  // 右键菜单 - 画布
+/**
+ * 处理画布右键菜单，显示添加节点和粘贴选项
+ */
   const handlePaneContextMenu = useCallback(
     (event) => {
       event.preventDefault();
@@ -74,7 +82,9 @@ const CanvasContent = () => {
     [clearSelection, showContextMenu]
   );
 
-  // 右键菜单 - 节点
+/**
+ * 处理节点右键菜单，显示复制和删除选项
+ */
   const handleNodeContextMenu = useCallback(
     (event, node) => {
       event.preventDefault();
@@ -84,7 +94,9 @@ const CanvasContent = () => {
     [setSelectedNode, showContextMenu]
   );
 
-  // 右键菜单 - 边
+/**
+ * 处理边右键菜单，显示删除连线选项
+ */
   const handleEdgeContextMenu = useCallback(
     (event, edge) => {
       event.preventDefault();
@@ -94,13 +106,17 @@ const CanvasContent = () => {
     [showContextMenu]
   );
 
-  // 点击画布空白处
+/**
+ * 点击画布空白处，清除选中状态并隐藏右键菜单
+ */
   const handlePaneClick = useCallback(() => {
     clearSelection();
     hideContextMenu();
   }, [clearSelection, hideContextMenu]);
 
-  // 节点拖拽结束
+/**
+ * 节点拖拽结束时保存历史记录
+ */
   const handleNodeDragStop = useCallback(
     (event, node) => {
       saveHistory();
@@ -108,7 +124,9 @@ const CanvasContent = () => {
     [saveHistory]
   );
 
-  // 添加图片节点
+/**
+ * 在指定位置添加图片节点
+ */
   const handleAddImage = useCallback(
     (menuPos) => {
       const position = screenToFlowPosition({
@@ -129,7 +147,9 @@ const CanvasContent = () => {
     [screenToFlowPosition, addNode]
   );
 
-  // 添加视频节点
+/**
+ * 在指定位置添加视频节点
+ */
   const handleAddVideo = useCallback(
     (menuPos) => {
       const position = screenToFlowPosition({
@@ -151,7 +171,9 @@ const CanvasContent = () => {
     [screenToFlowPosition, addNode]
   );
 
-  // 键盘快捷键
+/**
+ * 监听键盘快捷键：撤销(Cmd+Z)、重做(Cmd+Shift+Z)、复制(Cmd+C)、粘贴(Cmd+V)、删除(Delete)
+ */
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
@@ -219,13 +241,17 @@ const CanvasContent = () => {
     };
   }, [undo, redo, canUndo, canRedo, clipboard, pasteNode, screenToFlowPosition, removeNode]);
 
-  // 拖拽悬停
+/**
+ * 拖拽悬停时设置复制效果
+ */
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
-  // 拖拽放置
+/**
+ * 处理拖拽放置，从侧边栏拖入素材时创建新节点
+ */
   const handleDrop = useCallback(
     (e) => {
       e.preventDefault();
@@ -259,7 +285,9 @@ const CanvasContent = () => {
     [screenToFlowPosition, addNode]
   );
 
-  // 初始保存历史
+/**
+ * 组件挂载时保存初始历史记录
+ */
   useEffect(() => {
     saveHistory();
   }, []);
@@ -373,6 +401,9 @@ const CanvasContent = () => {
   );
 };
 
+/**
+ * Canvas 主组件 - 使用 ReactFlowProvider 包裹以提供 ReactFlow 上下文
+ */
 const Canvas = () => {
   return (
     <ReactFlowProvider>

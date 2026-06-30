@@ -9,6 +9,12 @@ import "@/assets/styles/reset.css";
 
 import App from "@/App";
 
+/**
+ * React 应用入口文件
+ * 配置 Antd 暗色主题并渲染 App 组件
+ */
+
+// 暗色主题配置
 const darkTheme = {
   algorithm: theme.darkAlgorithm,
   token: {
@@ -37,6 +43,9 @@ const darkTheme = {
   },
 };
 
+/**
+ * 渲染 React 应用到 DOM
+ */
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ConfigProvider theme={darkTheme} locale={zhCN}>

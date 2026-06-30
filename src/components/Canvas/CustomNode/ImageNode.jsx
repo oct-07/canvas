@@ -3,6 +3,10 @@ import { Handle, Position } from '@xyflow/react';
 import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import useCanvasStore from '@/store/canvasStore';
 
+/**
+ * 图片节点组件 - 显示图片缩略图的节点
+ * 支持选中状态、编辑和删除操作
+ */
 const ImageNode = memo(({ id, data, selected }) => {
   const removeNode = useCanvasStore((state) => state.removeNode);
 

@@ -7,6 +7,10 @@ import { generateId, deepClone } from '@/utils/common'
 
 const HISTORY_LIMIT = 50
 
+/**
+ * Canvas 画布状态管理 (Zustand Store)
+ * 管理节点、边、选中状态、历史记录、剪贴板等画布数据
+ */
 const useCanvasStore = create((set, get) => ({
   // 画布节点
   nodes: [],

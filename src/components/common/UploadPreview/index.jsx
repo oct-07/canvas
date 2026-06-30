@@ -6,6 +6,10 @@ import React, { useState } from 'react'
 import { Modal } from 'antd'
 import { DeleteOutlined, EyeOutlined, LoadingOutlined } from '@ant-design/icons'
 
+/**
+ * 上传预览组件 - 显示上传文件的缩略图
+ * 支持预览、删除和加载状态
+ */
 const UploadPreview = ({
   file,
   url,
@@ -20,11 +24,17 @@ const UploadPreview = ({
   const [previewVisible, setPreviewVisible] = useState(false)
   const [imageLoading, setImageLoading] = useState(true)
 
+/**
+ * 处理删除按钮点击事件
+ */
   const handleRemove = (e) => {
     e?.stopPropagation()
     onRemove?.()
   }
 
+/**
+ * 处理预览按钮点击事件
+ */
   const handlePreview = (e) => {
     e?.stopPropagation()
     if (onPreview) {

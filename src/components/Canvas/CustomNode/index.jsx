@@ -7,10 +7,16 @@ import { FileTextOutlined, PictureOutlined, RobotOutlined } from '@ant-design/ic
 import ImageNode from './ImageNode'
 import VideoNode from './VideoNode'
 
+/**
+ * 自定义节点组件 - 通用的文本/AI 节点
+ * 根据节点类型显示不同样式和图标
+ */
 const CustomNode = ({ id, data, type, selected }) => {
   const { label = '', description = '', icon } = data
 
-  // 根据节点类型设置默认图标
+/**
+ * 根据节点类型返回对应的图标
+ */
   const getNodeIcon = () => {
     if (icon) return icon
     switch (type) {
@@ -25,7 +31,9 @@ const CustomNode = ({ id, data, type, selected }) => {
     }
   }
 
-  // 根据节点类型设置样式
+/**
+ * 根据节点类型返回对应的样式配置
+ */
   const getNodeStyle = () => {
     switch (type) {
       case 'ai':
@@ -129,7 +137,9 @@ const CustomNode = ({ id, data, type, selected }) => {
 
 export default memo(CustomNode)
 
-// 节点类型映射，供 ReactFlow 使用
+/**
+ * 节点类型映射，供 ReactFlow 使用
+ */
 export const nodeTypes = {
   default: CustomNode,
   text: CustomNode,

@@ -3,6 +3,10 @@ import { UpCircleOutlined } from '@ant-design/icons';
 import { Menu } from 'antd';
 import { useEffect, useRef } from 'react';
 
+/**
+ * 画布右键菜单组件 - 根据右键目标（画布/节点/边）显示不同操作
+ * 支持添加图片/视频、复制粘贴、删除等操作
+ */
 const ContextMenu = ({ onAddImage, onAddVideo }) => {
   const menuRef = useRef(null);
   const {
@@ -17,7 +21,9 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
     selectedEdgeId,
   } = useCanvasStore();
 
-  // 点击外部关闭菜单
+/**
+ * 点击菜单外部时关闭菜单
+ */
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -34,7 +40,9 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
     };
   }, [contextMenu.visible, hideContextMenu]);
 
-  // ESC 关闭
+/**
+ * 按 ESC 键关闭菜单
+ */
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
@@ -53,6 +61,9 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
 
   if (!contextMenu.visible) return null;
 
+/**
+ * 复制选中的节点到剪贴板
+ */
   const handleCopy = () => {
     const { nodes, copyNode } = useCanvasStore.getState();
     const node = nodes.find((n) => n.id === selectedNodeId);
@@ -62,11 +73,17 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
     hideContextMenu();
   };
 
+/**
+ * 在菜单位置粘贴剪贴板中的节点
+ */
   const handlePaste = () => {
     pasteNode({ x: contextMenu.x, y: contextMenu.y });
     hideContextMenu();
   };
 
+/**
+ * 删除选中的节点或边
+ */
   const handleDelete = () => {
     if (contextMenu.target === 'node' && contextMenu.targetId) {
       removeNode(contextMenu.targetId);
@@ -76,17 +93,25 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
     hideContextMenu();
   };
 
+/**
+ * 在菜单位置添加图片节点
+ */
   const handleAddImage = () => {
     onAddImage?.({ x: contextMenu.x, y: contextMenu.y });
     hideContextMenu();
   };
 
+/**
+ * 在菜单位置添加视频节点
+ */
   const handleAddVideo = () => {
     onAddVideo?.({ x: contextMenu.x, y: contextMenu.y });
     hideContextMenu();
   };
 
-  // 根据目标类型渲染不同菜单
+/**
+ * 根据右键目标类型返回对应的菜单项列表
+ */
   const getMenuItems = () => {
     if (contextMenu.target === 'canvas') {
       return [

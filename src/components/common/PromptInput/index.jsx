@@ -14,6 +14,10 @@ import {
 
 const { TextArea } = Input
 
+/**
+ * 提示词输入框组件 - AI 交互的输入控件
+ * 支持多行输入、发送、停止、图片上传等功能
+ */
 const PromptInput = ({
   value = '',
   onChange,
@@ -32,12 +36,18 @@ const PromptInput = ({
   const [isFocused, setIsFocused] = useState(false)
   const textareaRef = useRef(null)
 
+/**
+ * 自动聚焦到输入框
+ */
   useEffect(() => {
     if (autoFocus && textareaRef.current) {
       textareaRef.current.focus()
     }
   }, [autoFocus])
 
+/**
+ * 处理回车键提交（Shift+Enter 换行）
+ */
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -47,12 +57,18 @@ const PromptInput = ({
     }
   }
 
+/**
+ * 提交输入的提示词
+ */
   const handleSubmit = () => {
     if (!loading && value.trim()) {
       onSubmit?.(value.trim())
     }
   }
 
+/**
+ * 处理输入值变化，检查长度限制
+ */
   const handleChange = (e) => {
     const newValue = e.target.value
     if (newValue.length <= maxLength) {

@@ -16,6 +16,10 @@ import {
   ExpandOutlined,
 } from '@ant-design/icons'
 
+/**
+ * 动作栏组件 - 可配置的图标按钮组
+ * 支持水平/垂直布局，可自定义按钮样式和点击行为
+ */
 const ActionBar = ({
   items = [],
   direction = 'horizontal', // horizontal | vertical

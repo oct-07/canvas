@@ -1,0 +1,50 @@
+/* 外层整体容器 */
+.panelWrap {
+    width: 420px;
+    padding: 16px;
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+/* 每一组参数块（分辨率/比例/音频/时长） */
+.paramBlock {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 分组标题：分辨率、比例、音频 */
+.blockTitle {
+    font-size: 16px;
+    color: #cccccc;
+    margin: 0;
+}
+
+/* 覆盖antd Radio.Button 暗黑样式 */
+.panelWrap :global(.ant-radio-button-wrapper) {
+    background: #2c2c2c;
+    border-color: #444444;
+    color: #ddd;
+}
+
+.panelWrap :global(.ant-radio-button-wrapper-checked) {
+    background: #333333 !important;
+    border-color: #fff !important;
+    color: #fff !important;
+}
+
+.panelWrap :global(.ant-radio-group) {
+    display: flex;
+}
+
+/* 开关行布局 */
+.panelWrap :global(.ant-space) {
+    align-items: center;
+}
+
+.panelWrap :global(.ant-switch) {
+    background: #444;
+}

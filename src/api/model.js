@@ -13,8 +13,8 @@ export const createContent = (data) => {
 /**
  * 获取可用的 AI 模型列表
  */
-export const getModelSku = () => {
-  return request.post('/index/aicreate/getModelSku')
+export const getModelSku = (params) => {
+  return request.post('/index/aicreate/getModelSku', params)
 }
 
 export default {

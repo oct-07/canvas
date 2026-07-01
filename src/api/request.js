@@ -1,4 +1,3 @@
-
 import { message } from 'antd'
 import axios from 'axios'
 
@@ -21,11 +20,8 @@ const createAxiosInstance = (options = {}) => {
   // 请求拦截器
   instance.interceptors.request.use(
     (config) => {
-      // 添加 token
-      const token = localStorage.getItem('token')
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`
-      }
+      const fixedToken = 'c43e1641-cc81-4d1a-80db-f423462522af'
+      config.headers.token = fixedToken
       return config
     },
     (error) => {
@@ -38,7 +34,7 @@ const createAxiosInstance = (options = {}) => {
     (response) => {
       const res = response.data
       // 后端规范：code=0 代表业务成功，code=1 代表业务失败
-      if (res.code !== 0) {
+      if (res.code !== 1) {
         message.error(res.message || '请求失败')
         // 抛出完整后端返回体，方便业务捕获错误信息
         return Promise.reject(res)

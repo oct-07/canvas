@@ -8,13 +8,12 @@ import {
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import useCanvasStore from "@/store/canvasStore";
+import useCanvasStore, { validateConnection } from "@/store/canvasStore";
 import CanvasHeader from "./CanvasHeader";
 import ContextMenu from "./ContextMenu";
 import { nodeTypes } from "./CustomNode";
 import SideBar from "./SideBar";
 
-import { validateConnection } from "@/store/canvasStore";
 import { getNodeScreenPos } from "@/utils/canvasEditor";
 
 const CanvasContent = () => {
@@ -41,7 +40,14 @@ const CanvasContent = () => {
     hideContextMenu,
     hideActiveEditor,
     removeNode,
+    // 预加载模型参数
+    loadModelSkuParams,
   } = useCanvasStore();
+
+  // 画布挂载自动请求一次模型参数接口
+  useEffect(() => {
+    loadModelSkuParams({});
+  }, [loadModelSkuParams]);
 
   const handleConnect = useCallback(
     (connection) => {
@@ -334,6 +340,7 @@ const CanvasContent = () => {
         width: "100vw",
         height: "100vh",
         background: "#0d0d0d",
+        display: "flex",
         flexDirection: "column",
       }}
     >
@@ -383,35 +390,6 @@ const CanvasContent = () => {
             size={2}
             color="rgba(255, 255, 255, 0.08)"
           />
-          {/* <Controls
-            showZoom
-            showFitView
-            showInteractive={false}
-            position="bottom-right"
-            style={{
-              background: "#1f1f1f",
-              borderRadius: "8px",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-            }}
-          />
-          <MiniMap
-            nodeColor={(node) => {
-              switch (node.type) {
-                case "image":
-                  return "#1890ff";
-                case "video":
-                  return "#722ed1";
-                default:
-                  return "#434343";
-              }
-            }}
-            maskColor="rgba(0, 0, 0, 0.5)"
-            position="bottom-left"
-            style={{
-              background: "#1f1f1f",
-              borderRadius: "8px",
-            }}
-          /> */}
         </ReactFlow>
       </div>
 

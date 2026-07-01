@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import {
   Background,
   BackgroundVariant,
@@ -9,14 +8,16 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 import useCanvasStore from "@/store/canvasStore";
+import CanvasHeader from "./CanvasHeader";
 import ContextMenu from "./ContextMenu";
 import { nodeTypes } from "./CustomNode";
 import SideBar from "./SideBar";
-import { getNodeScreenPos } from "@/utils/canvasEditor";
+
 import { validateConnection } from "@/store/canvasStore";
+import { getNodeScreenPos } from "@/utils/canvasEditor";
 
 const CanvasContent = () => {
   const { screenToFlowPosition } = useReactFlow();
@@ -106,41 +107,44 @@ const CanvasContent = () => {
     [saveHistory],
   );
 
-  const handleNodeClick = useCallback((_event, node) => {
-    const store = useCanvasStore.getState();
-    const editor = store.nodeEditors[node.id];
-    if (editor?.visible) {
-      store.hideActiveEditor(node.id);
-      return;
-    }
+  const handleNodeClick = useCallback(
+    (_event, node) => {
+      const store = useCanvasStore.getState();
+      const editor = store.nodeEditors[node.id];
+      if (editor?.visible) {
+        store.hideActiveEditor(node.id);
+        return;
+      }
 
-    clearSelection();
+      clearSelection();
 
-    const viewport = useCanvasStore.getState().viewport;
-    const pos = getNodeScreenPos(node, viewport);
-    const nodeData = nodes.find((item) => item.id === node.id)?.data || {};
+      const viewport = useCanvasStore.getState().viewport;
+      const pos = getNodeScreenPos(node, viewport);
+      const nodeData = nodes.find((item) => item.id === node.id)?.data || {};
 
-    useCanvasStore.setState((state) => ({
-      activeNodeId: node.id,
-      nodeEditors: {
-        ...state.nodeEditors,
-        [node.id]: {
-          visible: true,
-          nodeType: node.type,
-          position: pos,
-          data: nodeData,
+      useCanvasStore.setState((state) => ({
+        activeNodeId: node.id,
+        nodeEditors: {
+          ...state.nodeEditors,
+          [node.id]: {
+            visible: true,
+            nodeType: node.type,
+            position: pos,
+            data: nodeData,
+          },
         },
-      },
-      panelPos: pos,
-    }));
-  }, [clearSelection, nodes]);
+        panelPos: pos,
+      }));
+    },
+    [clearSelection, nodes],
+  );
 
   const handleNodesChange = useCallback(
     (changes) => {
       onNodesChange(changes);
 
       changes.forEach((change) => {
-        if (change.type === 'select' && change.selected) {
+        if (change.type === "select" && change.selected) {
           const store = useCanvasStore.getState();
           const node = store.nodes.find((item) => item.id === change.id);
           if (!node) return;
@@ -155,7 +159,7 @@ const CanvasContent = () => {
               ...state.nodeEditors,
               [change.id]: {
                 visible: true,
-                nodeType: 'image',
+                nodeType: "image",
                 position: pos,
                 data: nodeData,
               },
@@ -164,19 +168,16 @@ const CanvasContent = () => {
           }));
         }
 
-        if (change.type === 'select' && !change.selected) {
+        if (change.type === "select" && !change.selected) {
           useCanvasStore.getState().hideActiveEditor(change.id);
           useCanvasStore.getState().setActiveNodeId(null);
         }
 
-        if (change.type === 'position' && change.position) {
+        if (change.type === "position" && change.position) {
           const store = useCanvasStore.getState();
           if (store.activeNodeId === change.id) {
             const viewport = store.viewport;
-            const pos = getNodeScreenPos(
-              { ...change, data: {} },
-              viewport,
-            );
+            const pos = getNodeScreenPos({ ...change, data: {} }, viewport);
             store.setNodeEditorPosition(change.id, pos);
           }
         }
@@ -326,12 +327,15 @@ const CanvasContent = () => {
     return validateConnection(connection, useCanvasStore.getState());
   }, []);
 
-  const flowWrapperStyle = useMemo(() => ({
-    width: "100%",
-    height: "100%",
-    marginLeft: isSidebarOpen ? "280px" : "0",
-    transition: "margin-left 0.3s ease",
-  }), [isSidebarOpen]);
+  const flowWrapperStyle = useMemo(
+    () => ({
+      width: "100%",
+      height: "100%",
+      marginLeft: isSidebarOpen ? "280px" : "0",
+      transition: "margin-left 0.3s ease",
+    }),
+    [isSidebarOpen],
+  );
 
   return (
     <div
@@ -339,9 +343,11 @@ const CanvasContent = () => {
         width: "100vw",
         height: "100vh",
         background: "#0d0d0d",
+        flexDirection: "column",
       }}
     >
       <SideBar collapsed={!isSidebarOpen} onToggle={toggleSidebar} />
+      <CanvasHeader />
 
       <div style={flowWrapperStyle}>
         <ReactFlow

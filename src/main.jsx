@@ -3,7 +3,6 @@ import zhCN from "antd/locale/zh_CN";
 import React from "react";
 import ReactDOM from "react-dom/client";
 
-import "@/assets/styles/dark.css";
 import "@/assets/styles/global.css";
 import "@/assets/styles/reset.css";
 

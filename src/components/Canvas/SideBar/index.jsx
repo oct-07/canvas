@@ -107,6 +107,7 @@ const SideBar = ({ collapsed, onToggle }) => {
         display: "flex",
         flexDirection: "column",
         zIndex: 50,
+        borderRadius: "10px",
       }}
     >
       {/* 顶部标题栏 + 筛选下拉 + 收起按钮 */}

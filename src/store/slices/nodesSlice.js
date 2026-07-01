@@ -1,8 +1,8 @@
 /**
  * 节点状态管理 Slice
  */
-import { applyNodeChanges } from '@xyflow/react'
 import { generateId } from '@/utils/common'
+import { applyNodeChanges } from '@xyflow/react'
 
 /**
  * 节点 Slice 初始状态
@@ -86,4 +86,16 @@ export const createNodesSlice = (getStore, setStore) => ({
       nodes: applyNodeChanges(changes, state.nodes),
     }))
   },
+  /**
+   * 设置画布元素筛选类型 all / image / video
+   */
+  setElementFilter: (filterType) => setStore({ elementFilter: filterType }),
+
+  /**
+   * 设置画布元素搜索关键词
+   */
+  setElementSearch: (keyword) => setStore({ elementSearch: keyword }),
 })
+
+
+

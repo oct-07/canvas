@@ -1,92 +1,93 @@
 /**
  * 自定义节点组件
  */
-import React, { memo } from 'react'
-import { Handle, Position } from '@xyflow/react'
-import { FileTextOutlined, PictureOutlined, RobotOutlined } from '@ant-design/icons'
-import ImageNode from './ImageNode'
-import VideoNode from './VideoNode'
+import {
+  FileTextOutlined,
+  PictureOutlined,
+  RobotOutlined,
+} from "@ant-design/icons";
+import { Handle, Position } from "@xyflow/react";
+import { memo } from "react";
+import ImageNode from "./ImageNode";
+import VideoNode from "./VideoNode";
 
 /**
  * 自定义节点组件 - 通用的文本/AI 节点
  * 左侧为 Input，右侧为 Output
  */
 const CustomNode = ({ id, data, type, selected }) => {
-  const { label = '', description = '', icon } = data
+  const { label = "", description = "", icon } = data;
 
   const getNodeIcon = () => {
-    if (icon) return icon
+    if (icon) return icon;
     switch (type) {
-      case 'text':
-        return <FileTextOutlined />
-      case 'image':
-        return <PictureOutlined />
-      case 'ai':
-        return <RobotOutlined />
+      case "text":
+        return <FileTextOutlined />;
+      case "image":
+        return <PictureOutlined />;
+      case "ai":
+        return <RobotOutlined />;
       default:
-        return <FileTextOutlined />
+        return <FileTextOutlined />;
     }
-  }
+  };
 
   const getNodeStyle = () => {
     switch (type) {
-      case 'ai':
+      case "ai":
         return {
-          background: 'linear-gradient(135deg, #262626 0%, #1a1a2e 100%)',
-          borderColor: '#722ed1',
-        }
-      case 'image':
+          background: "linear-gradient(135deg, #262626 0%, #1a1a2e 100%)",
+        };
+      case "image":
         return {
-          background: '#1a2634',
-          borderColor: '#1890ff',
-        }
+          background: "#1a2634",
+        };
       default:
         return {
-          background: '#262626',
-          borderColor: '#303030',
-        }
+          background: "#262626",
+        };
     }
-  }
+  };
 
   const nodeStyle = {
-    padding: '12px 16px',
+    padding: "12px 16px",
     background: getNodeStyle().background,
     border: `1px solid ${getNodeStyle().borderColor}`,
     borderRadius: 8,
     minWidth: 150,
     maxWidth: 300,
-    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-    transition: 'all 0.2s ease',
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
+    transition: "all 0.2s ease",
     ...(selected && {
       boxShadow: `0 0 0 2px ${getNodeStyle().borderColor}40`,
     }),
-  }
+  };
 
   const headerStyle = {
-    display: 'flex',
-    alignItems: 'center',
+    display: "flex",
+    alignItems: "center",
     gap: 8,
     marginBottom: description ? 8 : 0,
     fontWeight: 600,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: "rgba(255, 255, 255, 0.9)",
     fontSize: 14,
-  }
+  };
 
   const iconStyle = {
     fontSize: 16,
     color: getNodeStyle().borderColor,
-  }
+  };
 
   const contentStyle = {
-    color: 'rgba(255, 255, 255, 0.65)',
+    color: "rgba(255, 255, 255, 0.65)",
     fontSize: 13,
     lineHeight: 1.5,
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    display: '-webkit-box',
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    display: "-webkit-box",
     WebkitLineClamp: 3,
-    WebkitBoxOrient: 'vertical',
-  }
+    WebkitBoxOrient: "vertical",
+  };
 
   return (
     <div className={`canvas-node canvas-node-${type}`} style={nodeStyle}>
@@ -99,7 +100,7 @@ const CustomNode = ({ id, data, type, selected }) => {
           background: getNodeStyle().borderColor,
           width: 10,
           height: 10,
-          border: '2px solid #262626',
+          border: "2px solid #262626",
           left: -5,
         }}
       />
@@ -110,11 +111,7 @@ const CustomNode = ({ id, data, type, selected }) => {
         <span>{label}</span>
       </div>
 
-      {description && (
-        <div style={contentStyle}>
-          {description}
-        </div>
-      )}
+      {description && <div style={contentStyle}>{description}</div>}
 
       {/* 右侧 Output 端口 */}
       <Handle
@@ -125,15 +122,15 @@ const CustomNode = ({ id, data, type, selected }) => {
           background: getNodeStyle().borderColor,
           width: 10,
           height: 10,
-          border: '2px solid #262626',
+          border: "2px solid #262626",
           right: -5,
         }}
       />
     </div>
-  )
-}
+  );
+};
 
-export default memo(CustomNode)
+export default memo(CustomNode);
 
 /**
  * 节点类型映射，供 ReactFlow 使用
@@ -144,4 +141,4 @@ export const nodeTypes = {
   ai: CustomNode,
   image: ImageNode,
   video: VideoNode,
-}
+};

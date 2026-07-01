@@ -6,6 +6,8 @@ import BottomParamToolbar from "./BottomParamToolbar";
 import PromptInputArea from "./PromptInputArea";
 import TopActionBar from "./TopActionBar";
 
+import { ArrowsAltOutlined, ShrinkOutlined } from "@ant-design/icons";
+import { Button } from "antd";
 // 常量建议抽到单独文件，这里临时定义
 export const STYLE_OPTIONS = [
   { label: "默认", value: "default" },
@@ -24,6 +26,16 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
+
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  const openFullScreen = () => {
+    setIsFullScreen(true);
+  };
+
+  const closeFullScreen = () => {
+    setIsFullScreen(false);
+  };
 
   // 全局状态统一放在父组件
   const [prompt, setPrompt] = useState("");
@@ -55,13 +67,11 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
   // 弹窗定位样式
   const wrapperStyle = useMemo(() => {
     if (!visible) return { display: "none" };
-    return {
+    const baseStyle = {
       position: "fixed",
       left: "50%",
-      top: "calc(50% + 100px)",
       transform: "translateX(-50%)",
       zIndex: 9999,
-      width: 820,
       borderRadius: 12,
       background: "#141414",
       border: "1px solid #303030",
@@ -72,7 +82,26 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
       display: "flex",
       flexDirection: "column",
     };
-  }, [visible]);
+
+    if (isFullScreen) {
+      return {
+        ...baseStyle,
+        top: 0,
+        left: 0,
+        transform: "translateX(-50%)", // 水平居中800px宽面板
+        width: "800px",
+        height: "600px",
+        borderRadius: 0,
+      };
+    }
+
+    return {
+      ...baseStyle,
+      top: "calc(50% + 100px)",
+      width: 820,
+      height: 400,
+    };
+  }, [visible, isFullScreen]);
 
   // 上传参考图处理
   const handleUploadRefImage = () => {
@@ -129,6 +158,63 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
         onMouseDown={(e) => e.stopPropagation()}
         onMouseUp={(e) => e.stopPropagation()}
       >
+        <Button
+          icon={<ArrowsAltOutlined />}
+          size="small"
+          style={{
+            position: "absolute",
+            top: 8,
+            right: 8,
+            zIndex: 10,
+            background: "#2a2a30",
+            borderColor: "#303030",
+            color: "#fff",
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            openFullScreen();
+          }}
+        />
+
+        {/* 非全屏：放大按钮；全屏：缩小关闭按钮，二选一 */}
+        {!isFullScreen ? (
+          <Button
+            icon={<ArrowsAltOutlined />}
+            size="small"
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              zIndex: 10,
+              background: "#2a2a30",
+              borderColor: "#303030",
+              color: "#fff",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              openFullScreen();
+            }}
+          />
+        ) : (
+          <Button
+            icon={<ShrinkOutlined />}
+            size="small"
+            style={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              zIndex: 10,
+              background: "#2a2a30",
+              borderColor: "#303030",
+              color: "#fff",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              closeFullScreen();
+            }}
+          />
+        )}
+
         {/* 1. 顶部按钮栏 */}
         <TopActionBar
           styleValue={styleValue}
@@ -137,7 +223,15 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
           onUploadRefImage={handleUploadRefImage}
         />
 
-        <PromptInputArea html={prompt} onChangeHtml={setPrompt} />
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            margin: "8px 0",
+          }}
+        >
+          <PromptInputArea html={prompt} onChangeHtml={setPrompt} />
+        </div>
 
         {/* 3. 底部全部参数工具栏 */}
         <BottomParamToolbar

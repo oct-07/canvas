@@ -268,7 +268,6 @@ const PromptInputArea = ({
     return () => window.removeEventListener("mousedown", globalClick);
   }, []);
 
-  // 关键修复：只有外部prompt和编辑器真实内容不一致时才回填，输入过程不刷新
   useEffect(() => {
     if (lockRef.current) return;
     const editor = editorRef.current;
@@ -295,6 +294,7 @@ const PromptInputArea = ({
         onKeyUp={handleKeyUp}
         onKeyDown={handleKeyDown}
         tabIndex={0}
+        onWheelCapture={(e) => e.stopPropagation()}
       />
 
       {atMentionVisible && filterAssets.length > 0 && (

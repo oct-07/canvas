@@ -8,6 +8,7 @@ import TopActionBar from "./TopActionBar";
 
 import { ArrowsAltOutlined, ShrinkOutlined } from "@ant-design/icons";
 import { Button } from "antd";
+import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 
 const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
@@ -107,16 +108,26 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
 
   // 提交生成
   const handleSend = () => {
+    const aspectRatio = editor?.data?.aspect_ratio;
+    const updatedParams = aspectRatio
+      ? {
+          ...params,
+          width: getAspectRatioSize(aspectRatio).width,
+          height: getAspectRatioSize(aspectRatio).height,
+        }
+      : params;
+
     const submitData = {
       prompt: prompt || undefined,
       style: styleValue,
       imageUrl: imageUrl || undefined,
-      params,
+      params: updatedParams,
       model,
       sizeConfig,
       preset,
       cameraMode,
       imageCount,
+      aspectRatio: aspectRatio || undefined,
     };
     onSubmit(submitData);
     // 提交后清空输入

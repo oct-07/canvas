@@ -1,11 +1,11 @@
-import useCanvasStore from '@/store/canvasStore';
-import { UpCircleOutlined } from '@ant-design/icons';
-import { Menu } from 'antd';
-import { useEffect, useRef } from 'react';
+import useCanvasStore from "@/store/canvasStore";
+import { UpCircleOutlined } from "@ant-design/icons";
+import { Menu } from "antd";
+import { useEffect, useRef } from "react";
 
 /**
- * 画布右键菜单组件 - 根据右键目标（画布/节点/边）显示不同操作
- * 支持添加图片/视频、复制粘贴、删除等操作
+ * 画布右键菜单组件 - 根据右键目标（画布/节点）显示不同操作
+ * 支持添加图片/视频、复制粘贴、删除节点等操作
  */
 const ContextMenu = ({ onAddImage, onAddVideo }) => {
   const menuRef = useRef(null);
@@ -15,15 +15,13 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
     copyNode,
     pasteNode,
     removeNode,
-    removeEdge,
     hideContextMenu,
     selectedNodeId,
-    selectedEdgeId,
   } = useCanvasStore();
 
-/**
- * 点击菜单外部时关闭菜单
- */
+  /**
+   * 点击菜单外部时关闭菜单
+   */
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -32,38 +30,38 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
     };
 
     if (contextMenu.visible) {
-      document.addEventListener('click', handleClickOutside);
+      document.addEventListener("click", handleClickOutside);
     }
 
     return () => {
-      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener("click", handleClickOutside);
     };
   }, [contextMenu.visible, hideContextMenu]);
 
-/**
- * 按 ESC 键关闭菜单
- */
+  /**
+   * 按 ESC 键关闭菜单
+   */
   useEffect(() => {
     const handleEsc = (e) => {
-      if (e.key === 'Escape') {
+      if (e.key === "Escape") {
         hideContextMenu();
       }
     };
 
     if (contextMenu.visible) {
-      document.addEventListener('keydown', handleEsc);
+      document.addEventListener("keydown", handleEsc);
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener("keydown", handleEsc);
     };
   }, [contextMenu.visible, hideContextMenu]);
 
   if (!contextMenu.visible) return null;
 
-/**
- * 复制选中的节点到剪贴板
- */
+  /**
+   * 复制选中的节点到剪贴板
+   */
   const handleCopy = () => {
     const { nodes, copyNode } = useCanvasStore.getState();
     const node = nodes.find((n) => n.id === selectedNodeId);
@@ -73,64 +71,62 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
     hideContextMenu();
   };
 
-/**
- * 在菜单位置粘贴剪贴板中的节点
- */
+  /**
+   * 在菜单位置粘贴剪贴板中的节点
+   */
   const handlePaste = () => {
     pasteNode({ x: contextMenu.x, y: contextMenu.y });
     hideContextMenu();
   };
 
-/**
- * 删除选中的节点或边
- */
+  /**
+   * 仅删除节点（移除连线删除分支）
+   */
   const handleDelete = () => {
-    if (contextMenu.target === 'node' && contextMenu.targetId) {
+    if (contextMenu.target === "node" && contextMenu.targetId) {
       removeNode(contextMenu.targetId);
-    } else if (contextMenu.target === 'edge' && contextMenu.targetId) {
-      removeEdge(contextMenu.targetId);
     }
     hideContextMenu();
   };
 
-/**
- * 在菜单位置添加图片节点
- */
+  /**
+   * 在菜单位置添加图片节点
+   */
   const handleAddImage = () => {
     onAddImage?.({ x: contextMenu.x, y: contextMenu.y });
     hideContextMenu();
   };
 
-/**
- * 在菜单位置添加视频节点
- */
+  /**
+   * 在菜单位置添加视频节点
+   */
   const handleAddVideo = () => {
     onAddVideo?.({ x: contextMenu.x, y: contextMenu.y });
     hideContextMenu();
   };
 
-/**
- * 根据右键目标类型返回对应的菜单项列表
- */
+  /**
+   * 根据右键目标类型返回对应的菜单项列表
+   */
   const getMenuItems = () => {
-    if (contextMenu.target === 'canvas') {
+    if (contextMenu.target === "canvas") {
       return [
         {
-          key: 'add-image',
-          label: '添加图片',
+          key: "add-image",
+          label: "添加图片",
           icon: <UpCircleOutlined />,
           onClick: handleAddImage,
         },
         {
-          key: 'add-video',
-          label: '添加视频',
+          key: "add-video",
+          label: "添加视频",
           icon: <UpCircleOutlined />,
           onClick: handleAddVideo,
         },
-        { type: 'divider' },
+        { type: "divider" },
         {
-          key: 'paste',
-          label: '粘贴',
+          key: "paste",
+          label: "粘贴",
           icon: <UpCircleOutlined />,
           onClick: handlePaste,
           disabled: !clipboard,
@@ -138,30 +134,18 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
       ];
     }
 
-    if (contextMenu.target === 'node') {
+    if (contextMenu.target === "node") {
       return [
         {
-          key: 'copy',
-          label: '复制',
+          key: "copy",
+          label: "复制",
           icon: <UpCircleOutlined />,
           onClick: handleCopy,
         },
-        { type: 'divider' },
+        { type: "divider" },
         {
-          key: 'delete',
-          label: '删除',
-          icon: <UpCircleOutlined />,
-          danger: true,
-          onClick: handleDelete,
-        },
-      ];
-    }
-
-    if (contextMenu.target === 'edge') {
-      return [
-        {
-          key: 'delete',
-          label: '删除连线',
+          key: "delete",
+          label: "删除",
           icon: <UpCircleOutlined />,
           danger: true,
           onClick: handleDelete,
@@ -176,7 +160,7 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
     <div
       ref={menuRef}
       style={{
-        position: 'fixed',
+        position: "fixed",
         left: contextMenu.x,
         top: contextMenu.y,
         zIndex: 1000,
@@ -187,11 +171,11 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
         mode="vertical"
         items={getMenuItems()}
         style={{
-          background: '#1f1f1f',
-          border: '1px solid #303030',
-          borderRadius: '8px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
-          minWidth: '160px',
+          background: "#1f1f1f",
+          border: "1px solid #303030",
+          borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+          minWidth: "160px",
         }}
       />
     </div>

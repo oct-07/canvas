@@ -1,7 +1,22 @@
+import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import useCanvasStore from "@/store/canvasStore";
 import { getParamChineseName } from "@/utils/paramsMap.js";
+import { ArrowUpOutlined } from "@ant-design/icons";
 import { Button, Dropdown, Popover, Radio, Space, Switch } from "antd";
-import "./BottomParamToolbar.css";
+import { useState } from "react";
+
+// 比例数据源：固定 key、展示文案、宽高比值
+// 底层公式：height = width ÷ (w / h)
+// 预览框宽度固定 20px，高度由 aspect-ratio 原生 CSS 自动计算
+const RATIO_LIST = [
+  { key: "auto", label: "Auto", ratio: null },
+  { key: "16:9", label: "16:9", ratio: "16 / 9" },
+  { key: "4:3", label: "4 / 3", ratio: "4 / 3" },
+  { key: "1:1", label: "1:1", ratio: "1 / 1" },
+  { key: "3:4", label: "3:4", ratio: "3 / 4" },
+  { key: "9:16", label: "9:16", ratio: "9 / 16" },
+  { key: "21:9", label: "21:9", ratio: "21 / 9" },
+];
 
 const BottomParamToolbar = ({
   sizeConfig,
@@ -35,6 +50,9 @@ const BottomParamToolbar = ({
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
   const paramValues = editor?.data || {};
 
+  // 比例选中状态
+  const [currentRatio, setCurrentRatio] = useState("auto");
+
   //  参数列表
   const propList = currentSelectModel?.prop_list || [];
 
@@ -46,6 +64,45 @@ const BottomParamToolbar = ({
       [propKey]: value,
     };
     updateNodeEditorData(activeNodeId, newEditorData);
+  };
+
+  // 预览小方框样式
+  // 公式：height = 20px ÷ (宽比值 / 高比值)
+  // 例：21:9 → 40 ÷ (21/9) ≈ 17.14px；1:1 → 40 ÷ 1 = 40px
+  const getPreviewBoxStyle = (ratioStr) => ({
+    width: "20px",
+    aspectRatio: ratioStr || "auto",
+    border: "1px solid #888",
+    borderRadius: "2px",
+    background: "transparent",
+    boxSizing: "border-box",
+  });
+
+  // 按钮样式
+  const getButtonStyle = (isSelected) => ({
+    display: "inline-flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "6px",
+    padding: "10px 4px",
+    borderRadius: "8px",
+    border: isSelected ? "2px solid #fff" : "1px solid #555",
+    background: isSelected ? "#333" : "#2c2c2c",
+    color: "#ddd",
+    cursor: "pointer",
+    transition: "all 0.2s ease",
+    minWidth: "64px",
+    flex: "1 1 auto",
+    height: "65px",
+  });
+
+  // 网格布局：5 列自适应
+  const ratioGridStyle = {
+    display: "grid",
+    gridTemplateColumns: "repeat(5, 1fr)",
+    gap: "10px",
+    marginTop: "12px",
   };
 
   // 渲染单条参数
@@ -60,14 +117,78 @@ const BottomParamToolbar = ({
     const title = getParamChineseName(prop_str, prop_name);
     const currentVal = paramValues[prop_str];
 
+    if (prop_str === "aspect_ratio" && prop_values_list.length) {
+      // 将后端 prop_values_list 映射到固定 RATIO_LIST
+      // 通过 label 匹配比例，确保预览图标与数据一致
+      const options = prop_values_list.map((item) => {
+        const matchedRatio = RATIO_LIST.find(
+          (r) =>
+            r.label === item.prop_value_name || r.key === item.prop_value_id,
+        );
+        return {
+          label: item.prop_value_name,
+          value: item.prop_value_id,
+          ratio: matchedRatio?.ratio || null,
+          key: matchedRatio?.key || item.prop_value_id,
+        };
+      });
+
+      return (
+        <div style={{ marginBottom: "16px" }} key={prop_id}>
+          <div
+            style={{
+              fontSize: "16px",
+              color: "#cccccc",
+              marginBottom: "8px",
+            }}
+          >
+            {title}
+          </div>
+          {/* 比例选择网格：5 列布局 */}
+          <div style={ratioGridStyle}>
+            {options.map((opt) => {
+              const isSelected = currentRatio === opt.key;
+              return (
+                <div
+                  key={opt.value}
+                  style={getButtonStyle(isSelected)}
+                  onClick={() => setCurrentRatio(opt.key)}
+                >
+                  {/* 比例预览小图标：宽度固定 20px，高度由 aspect-ratio 自动计算 */}
+                  <div style={getPreviewBoxStyle(opt.ratio)} />
+                  <span
+                    style={{
+                      fontSize: "12px",
+                      color: "inherit",
+                      textAlign: "center",
+                    }}
+                  >
+                    {opt.label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
     if ([1, 2, 3].includes(prop_viewtype)) {
       const options = prop_values_list.map((item) => ({
         label: item.prop_value_name,
         value: item.prop_value_id,
       }));
       return (
-        <div className="paramBlock" key={prop_id}>
-          <div className="blockTitle">{title}</div>
+        <div style={{ marginBottom: "16px" }} key={prop_id}>
+          <div
+            style={{
+              fontSize: "16px",
+              color: "#cccccc",
+              marginBottom: "8px",
+            }}
+          >
+            {title}
+          </div>
           <Radio.Group
             value={currentVal}
             onChange={(e) => handleParamChange(prop_str, e.target.value)}
@@ -87,8 +208,16 @@ const BottomParamToolbar = ({
 
     if (prop_viewtype === 4) {
       return (
-        <div className="paramBlock" key={prop_id}>
-          <div className="blockTitle">{title}</div>
+        <div style={{ marginBottom: "16px" }} key={prop_id}>
+          <div
+            style={{
+              fontSize: "16px",
+              color: "#cccccc",
+              marginBottom: "8px",
+            }}
+          >
+            {title}
+          </div>
           <Space>
             <Switch
               checked={Boolean(currentVal)}
@@ -106,7 +235,17 @@ const BottomParamToolbar = ({
   // 参数弹窗面板
   const renderParamPanel = () => {
     return (
-      <div className="panelWrap">
+      <div
+        style={{
+          width: "420px",
+          padding: "16px",
+          backgroundColor: "#1e1e1e",
+          borderRadius: "8px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "28px",
+        }}
+      >
         {propList.map((prop) => renderSingleParam(prop))}
       </div>
     );
@@ -155,10 +294,13 @@ const BottomParamToolbar = ({
           </Popover>
         )}
       </Space>
-
-      <Button type="primary" shape="circle" onClick={onSubmit}>
-        ↑
-      </Button>
+      <StyleSelect />
+      <Button
+        type="primary"
+        shape="circle"
+        onClick={onSubmit}
+        icon={<ArrowUpOutlined />}
+      />
     </div>
   );
 };

@@ -1,8 +1,9 @@
 import useCanvasStore from "@/store/canvasStore";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { Handle, Position } from "@xyflow/react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import FloatingEditor from "../FloatingEditor";
+import { getNodeStyleFromAspect } from "@/utils/aspectRatioMap";
 
 /**
  * 视频节点组件 - 显示视频缩略图的节点
@@ -57,13 +58,19 @@ const VideoNode = memo(({ id, data, selected }) => {
   };
 
   const nodeData = editor?.data ?? data ?? {};
+  const aspectRatio = nodeData.aspect_ratio || "272";
+
+  const previewStyle = useMemo(() => {
+    const { width, height } = getNodeStyleFromAspect(aspectRatio, 240);
+    return { width, height };
+  }, [aspectRatio]);
 
   return (
     <div
       onClick={handleNodeClick}
       style={{
         position: "relative",
-        width: "240px",
+        width: previewStyle.width,
         background: "#262626",
         borderRadius: "12px",
         border: selected ? "2px solid #177ddc" : "1px solid #303030",
@@ -90,7 +97,7 @@ const VideoNode = memo(({ id, data, selected }) => {
 
       <div
         style={{
-          height: "160px",
+          height: previewStyle.height,
           background: "#1f1f1f",
           position: "relative",
           display: "flex",

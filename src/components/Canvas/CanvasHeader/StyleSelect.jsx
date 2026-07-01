@@ -269,6 +269,7 @@ export default function StyleSelect({ value, onChange }) {
     if (isAddingModalOpen.current) return;
     setDropdownOpen(open);
   };
+  const displayText = value ? styleTextMap[value] || value : "请选择风格";
 
   return (
     <>
@@ -297,7 +298,7 @@ export default function StyleSelect({ value, onChange }) {
             whiteSpace: "nowrap",
           }}
         >
-          <span>{styleTextMap[value]}</span>
+          <span>{displayText}</span>
           <DownOutlined style={{ fontSize: 14, color: "#666" }} />
         </div>
       </Dropdown>

@@ -1,8 +1,9 @@
 import useCanvasStore from "@/store/canvasStore";
 import { PictureOutlined } from "@ant-design/icons";
 import { Handle, Position } from "@xyflow/react";
-import { memo, useCallback } from "react";
+import { memo, useCallback, useMemo } from "react";
 import FloatingEditor from "../FloatingEditor";
+import { getNodeStyleFromAspect } from "@/utils/aspectRatioMap";
 
 const ImageNode = memo(({ id, data, selected }) => {
   const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
@@ -64,13 +65,19 @@ const ImageNode = memo(({ id, data, selected }) => {
   );
 
   const nodeData = editor?.data ?? data ?? {};
+  const aspectRatio = nodeData.aspect_ratio || "272";
+
+  const previewStyle = useMemo(() => {
+    const { width, height } = getNodeStyleFromAspect(aspectRatio, 220);
+    return { width, height };
+  }, [aspectRatio]);
 
   return (
     <div
       onClick={handleNodeClick}
       style={{
         position: "relative",
-        width: "220px",
+        width: previewStyle.width,
         background: "#262626",
         borderRadius: 12,
         border: selected ? "2px solid #177ddc" : "1px solid #303030",
@@ -97,7 +104,7 @@ const ImageNode = memo(({ id, data, selected }) => {
 
       <div
         style={{
-          height: "150px",
+          height: previewStyle.height,
           background: "#1f1f1f",
           display: "flex",
           alignItems: "center",

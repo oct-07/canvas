@@ -1,8 +1,6 @@
 import {
   Background,
   BackgroundVariant,
-  Controls,
-  MiniMap,
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
@@ -196,10 +194,7 @@ const CanvasContent = () => {
         id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: "image",
         position,
-        data: {
-          url: "https://picsum.photos/200/150?random=" + Date.now(),
-          name: "New Image",
-        },
+        data: {},
       };
       addNode(newNode);
     },
@@ -216,11 +211,7 @@ const CanvasContent = () => {
         id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: "video",
         position,
-        data: {
-          url: "https://www.w3schools.com/html/mov_bbb.mp4",
-          thumbnail: "https://picsum.photos/240/160?random=" + Date.now(),
-          name: "New Video",
-        },
+        data: {},
       };
       addNode(newNode);
     },
@@ -392,7 +383,7 @@ const CanvasContent = () => {
             size={2}
             color="rgba(255, 255, 255, 0.08)"
           />
-          <Controls
+          {/* <Controls
             showZoom
             showFitView
             showInteractive={false}
@@ -420,7 +411,7 @@ const CanvasContent = () => {
               background: "#1f1f1f",
               borderRadius: "8px",
             }}
-          />
+          /> */}
         </ReactFlow>
       </div>
 

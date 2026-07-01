@@ -1,4 +1,5 @@
 import useCanvasStore from "@/store/canvasStore";
+import { PictureOutlined } from "@ant-design/icons";
 import { Handle, Position } from "@xyflow/react";
 import { memo, useCallback } from "react";
 import FloatingEditor from "../FloatingEditor";
@@ -7,7 +8,9 @@ const ImageNode = memo(({ id, data, selected }) => {
   const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
   const showActiveEditor = useCanvasStore((state) => state.showActiveEditor);
   const setActiveNodeId = useCanvasStore((state) => state.setActiveNodeId);
-  const setNodeEditorPosition = useCanvasStore((state) => state.setNodeEditorPosition);
+  const setNodeEditorPosition = useCanvasStore(
+    (state) => state.setNodeEditorPosition,
+  );
   const setNodeEditorData = useCanvasStore((state) => state.setNodeEditorData);
 
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
@@ -26,7 +29,9 @@ const ImageNode = memo(({ id, data, selected }) => {
       showActiveEditor(id, "image");
       setActiveNodeId(id);
 
-      const node = useCanvasStore.getState().nodes.find((item) => item.id === id);
+      const node = useCanvasStore
+        .getState()
+        .nodes.find((item) => item.id === id);
       if (!node) return;
 
       const viewport = useCanvasStore.getState().viewport;
@@ -40,7 +45,7 @@ const ImageNode = memo(({ id, data, selected }) => {
           ...state.nodeEditors,
           [id]: {
             visible: true,
-            nodeType: 'image',
+            nodeType: "image",
             position: screenPos,
             data: data || {},
           },
@@ -48,7 +53,14 @@ const ImageNode = memo(({ id, data, selected }) => {
         panelPos: screenPos,
       }));
     },
-    [id, isThisEditorOpen, hideActiveEditor, showActiveEditor, setActiveNodeId, data],
+    [
+      id,
+      isThisEditorOpen,
+      hideActiveEditor,
+      showActiveEditor,
+      setActiveNodeId,
+      data,
+    ],
   );
 
   const nodeData = editor?.data ?? data ?? {};
@@ -86,14 +98,31 @@ const ImageNode = memo(({ id, data, selected }) => {
       <div
         style={{
           height: "150px",
-          background: `url(${nodeData.url || nodeData.thumbnail}) center/cover no-repeat`,
+          background: "#1f1f1f",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: "12px 12px 0 0",
+          overflow: "hidden",
         }}
-      />
-
+      >
+        {nodeData.url || nodeData.thumbnail ? (
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              background: `url(${nodeData.url || nodeData.thumbnail}) center/cover no-repeat`,
+            }}
+          />
+        ) : (
+          <PictureOutlined style={{ fontSize: 46, color: "#555" }} />
+        )}
+      </div>
       <div
         style={{
           padding: "6px 10px",
-          background: "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
+          background:
+            "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
         }}
       >
         <span
@@ -107,7 +136,7 @@ const ImageNode = memo(({ id, data, selected }) => {
             display: "block",
           }}
         >
-          {nodeData.name || "Image"}
+          {nodeData.name}
         </span>
       </div>
 

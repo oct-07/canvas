@@ -1,8 +1,8 @@
-import { memo } from 'react';
-import { Handle, Position } from '@xyflow/react';
-import { DeleteOutlined, PlayCircleOutlined } from '@ant-design/icons';
-import FloatingEditor from '../FloatingEditor';
-import useCanvasStore from '@/store/canvasStore';
+import useCanvasStore from "@/store/canvasStore";
+import { PlayCircleOutlined } from "@ant-design/icons";
+import { Handle, Position } from "@xyflow/react";
+import { memo } from "react";
+import FloatingEditor from "../FloatingEditor";
 
 /**
  * 视频节点组件 - 显示视频缩略图的节点
@@ -10,11 +10,12 @@ import useCanvasStore from '@/store/canvasStore';
  * 数据类型: VIDEO
  */
 const VideoNode = memo(({ id, data, selected }) => {
-  const removeNode = useCanvasStore((state) => state.removeNode);
   const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
   const showActiveEditor = useCanvasStore((state) => state.showActiveEditor);
   const setActiveNodeId = useCanvasStore((state) => state.setActiveNodeId);
-  const setNodeEditorPosition = useCanvasStore((state) => state.setNodeEditorPosition);
+  const setNodeEditorPosition = useCanvasStore(
+    (state) => state.setNodeEditorPosition,
+  );
   const setNodeEditorData = useCanvasStore((state) => state.setNodeEditorData);
 
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
@@ -29,7 +30,7 @@ const VideoNode = memo(({ id, data, selected }) => {
       return;
     }
 
-    showActiveEditor(id, 'video');
+    showActiveEditor(id, "video");
     setActiveNodeId(id);
 
     const node = useCanvasStore.getState().nodes.find((item) => item.id === id);
@@ -46,7 +47,7 @@ const VideoNode = memo(({ id, data, selected }) => {
         ...state.nodeEditors,
         [id]: {
           visible: true,
-          nodeType: 'video',
+          nodeType: "video",
           position: screenPos,
           data: data || {},
         },
@@ -61,16 +62,16 @@ const VideoNode = memo(({ id, data, selected }) => {
     <div
       onClick={handleNodeClick}
       style={{
-        position: 'relative',
-        width: '240px',
-        background: '#262626',
-        borderRadius: '12px',
-        border: selected ? '2px solid #177ddc' : '1px solid #303030',
-        overflow: 'visible',
+        position: "relative",
+        width: "240px",
+        background: "#262626",
+        borderRadius: "12px",
+        border: selected ? "2px solid #177ddc" : "1px solid #303030",
+        overflow: "visible",
         boxShadow: selected
-          ? '0 0 20px rgba(23, 125, 220, 0.3)'
-          : '0 4px 12px rgba(0,0,0,0.3)',
-        transition: 'all 0.2s ease',
+          ? "0 0 20px rgba(23, 125, 220, 0.3)"
+          : "0 4px 12px rgba(0,0,0,0.3)",
+        transition: "all 0.2s ease",
       }}
     >
       {/* 左侧 Input 端口 - 接收图片或视频输入 */}
@@ -79,84 +80,92 @@ const VideoNode = memo(({ id, data, selected }) => {
         position={Position.Left}
         id="input"
         style={{
-          background: '#722ed1',
+          background: "#722ed1",
           width: 10,
           height: 10,
-          border: '2px solid #262626',
+          border: "2px solid #262626",
           left: -5,
         }}
       />
 
       <div
         style={{
-          height: '160px',
-          background: `url(${nodeData.thumbnail || 'https://picsum.photos/240/160'}) center/cover no-repeat`,
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
+          height: "160px",
+          background: "#1f1f1f",
+          position: "relative",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+          borderRadius: "10px",
         }}
       >
+        {nodeData.thumbnail && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: `url(${nodeData.thumbnail}) center/cover no-repeat`,
+            }}
+          />
+        )}
+
         <div
           style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '50%',
-            background: 'rgba(23, 125, 220, 0.9)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+            width: "48px",
+            height: "48px",
+            borderRadius: "50%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1,
           }}
         >
-          <PlayCircleOutlined style={{ color: '#fff', fontSize: '24px' }} />
+          <PlayCircleOutlined style={{ color: "#555555", fontSize: "50px" }} />
         </div>
 
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             top: 0,
             left: 0,
             right: 0,
-            padding: '8px',
-            background: 'linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)',
-            display: 'flex',
-            justifyContent: 'flex-end',
+            padding: "8px",
+            background:
+              "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)",
+            display: "flex",
+            justifyContent: "flex-end",
             opacity: selected ? 1 : 0,
-            transition: 'opacity 0.2s',
+            transition: "opacity 0.2s",
           }}
-        >
-          <DeleteOutlined
-            style={{ color: '#ff4d4f', cursor: 'pointer', fontSize: '14px' }}
-            onClick={() => removeNode(id)}
-          />
-        </div>
+        ></div>
 
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             bottom: 0,
             left: 0,
             right: 0,
-            padding: '8px',
-            background: 'linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
+            padding: "8px",
+            background:
+              "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
           }}
         >
           <span
             style={{
-              color: '#fff',
-              fontSize: '12px',
+              color: "#fff",
+              fontSize: "12px",
               fontWeight: 500,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
               flex: 1,
             }}
           >
-            {nodeData.name || 'Video'}
+            {nodeData.name}
           </span>
         </div>
       </div>
@@ -167,10 +176,10 @@ const VideoNode = memo(({ id, data, selected }) => {
         position={Position.Right}
         id="output"
         style={{
-          background: '#722ed1',
+          background: "#722ed1",
           width: 10,
           height: 10,
-          border: '2px solid #262626',
+          border: "2px solid #262626",
           right: -5,
         }}
       />
@@ -178,9 +187,9 @@ const VideoNode = memo(({ id, data, selected }) => {
       {isThisEditorOpen && (
         <div
           style={{
-            position: 'absolute',
+            position: "absolute",
             left: 0,
-            top: '100%',
+            top: "100%",
             marginTop: 8,
             zIndex: 9999,
           }}
@@ -206,6 +215,6 @@ const VideoNode = memo(({ id, data, selected }) => {
   );
 });
 
-VideoNode.displayName = 'VideoNode';
+VideoNode.displayName = "VideoNode";
 
 export default VideoNode;

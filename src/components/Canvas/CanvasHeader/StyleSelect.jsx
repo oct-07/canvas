@@ -290,10 +290,10 @@ export default function StyleSelect({ value, onChange }) {
             alignItems: "center",
             gap: 8,
             padding: "6px 14px",
-            background: "#f5f5f5",
+            background: "#1f1f1f",
             borderRadius: 8,
             cursor: "pointer",
-            border: "1px solid #ccc",
+            border: "none",
             whiteSpace: "nowrap",
           }}
         >

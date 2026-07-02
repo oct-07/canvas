@@ -3,8 +3,9 @@ import useCanvasStore from "@/store/canvasStore";
 import { getParamChineseName } from "@/utils/paramsMap.js";
 import {
   ArrowUpOutlined,
-  CloseCircleOutlined,
   NotificationOutlined,
+  SoundOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, Popover, Radio, Space, Switch } from "antd";
 import { useEffect, useRef, useState } from "react";
@@ -55,6 +56,8 @@ const BottomParamToolbar = ({
 
   //  prop_list 从当前节点对应的模型里取，而不是全局状态
   const propList = currentSelectModel?.prop_list || [];
+  // 积分映射表
+  const pointMap = currentSelectModel?.point_list || {};
 
   // 比例选中状态：优先从已保存参数里恢复
   const [currentRatio, setCurrentRatio] = useState(
@@ -93,10 +96,19 @@ const BottomParamToolbar = ({
 
     const newData = { ...paramValues, model_id: firstModel.id };
     firstModel.prop_list?.forEach((prop) => {
-      if (Array.isArray(prop.prop_values_list) && prop.prop_values_list.length > 0) {
+      if (
+        Array.isArray(prop.prop_values_list) &&
+        prop.prop_values_list.length > 0
+      ) {
         const firstVal = prop.prop_values_list[0];
         newData[prop.prop_str] = firstVal.prop_value_id;
-        console.log("[Init] set", prop.prop_str, "=", firstVal.prop_value_id, firstVal.prop_value_name);
+        console.log(
+          "[Init] set",
+          prop.prop_str,
+          "=",
+          firstVal.prop_value_id,
+          firstVal.prop_value_name,
+        );
       }
     });
     console.log("[Init] newData", newData);
@@ -146,14 +158,21 @@ const BottomParamToolbar = ({
 
         // 音频开关类型，返回图标标识
         if (prop.prop_viewtype === 4) {
+          // 兜底无选项直接返回空
+          if (
+            !Array.isArray(prop.prop_values_list) ||
+            prop.prop_values_list.length === 0
+          ) {
+            return null;
+          }
+          const trueItem = prop.prop_values_list.find(
+            (item) => String(item.prop_value_name) === "true",
+          );
+          const isOpen = String(currentVal) === trueItem?.prop_value_id;
           return {
             key: prop.prop_str,
             isAudioIcon: true,
-            iconNode: Boolean(currentVal) ? (
-              <NotificationOutlined />
-            ) : (
-              <CloseCircleOutlined />
-            ),
+            iconNode: isOpen ? <NotificationOutlined /> : <SoundOutlined />,
           };
         }
 
@@ -168,6 +187,35 @@ const BottomParamToolbar = ({
   };
 
   const paramSummary = getParamSummary();
+
+  const getConsumePoint = () => {
+    if (!currentSelectModel?.point_list || propList.length === 0) {
+      console.log("[积分计算] 无模型/无积分配置/无参数", {
+        currentSelectModel,
+        propList,
+      });
+      return 0;
+    }
+    const valueIds = [];
+    propList.forEach((prop) => {
+      const val = paramValues[prop.prop_str];
+      // 值为空直接跳过
+      if (val === null || val === undefined || val === "") return;
+      // 所有参数存储的val本身就是prop_value_id，直接推入数组
+      valueIds.push(val);
+    });
+    // 数字升序拼接key
+    const combineKey = valueIds.sort((a, b) => Number(a) - Number(b)).join(",");
+    const point = currentSelectModel.point_list[combineKey] ?? 0;
+    console.log("[积分计算日志] ", {
+      所有选中valueId: valueIds,
+      拼接key: combineKey,
+      point_list对照表: currentSelectModel.point_list,
+      当前匹配积分: point,
+    });
+    return point;
+  };
+  const consumePoint = getConsumePoint();
 
   // 预览小方框样式
   // 公式：height = 20px ÷ (宽比值 / 高比值)
@@ -257,7 +305,7 @@ const BottomParamToolbar = ({
                   style={getButtonStyle(isSelected)}
                   onClick={() => {
                     setCurrentRatio(opt.key);
-                    handleParamChange("aspect_ratio", opt.key);
+                    handleParamChange("aspect_ratio", opt.value);
                   }}
                 >
                   {/* 比例预览小图标：宽度固定 20px，高度由 aspect-ratio 自动计算 */}
@@ -312,7 +360,14 @@ const BottomParamToolbar = ({
       );
     }
 
-    if (prop_viewtype === 4) {
+    if (prop.prop_viewtype === 4) {
+      // 拿到开关对应的两个id
+      const trueItem = prop.prop_values_list.find(
+        (item) => String(item.prop_value_name) === "true",
+      );
+      const falseItem = prop.prop_values_list.find(
+        (item) => String(item.prop_value_name) === "false",
+      );
       return (
         <div style={{ marginBottom: "16px" }} key={prop_id}>
           <div
@@ -326,10 +381,17 @@ const BottomParamToolbar = ({
           </div>
           <Space>
             <Switch
-              checked={Boolean(currentVal)}
-              onChange={(checked) => handleParamChange(prop_str, checked)}
+              checked={String(currentVal) === trueItem?.prop_value_id}
+              onChange={(checked) => {
+                const saveId = checked
+                  ? trueItem.prop_value_id
+                  : falseItem.prop_value_id;
+                handleParamChange(prop.prop_str, saveId);
+              }}
             />
-            <span>{currentVal ? "开启" : "关闭"}</span>
+            <span>
+              {String(currentVal) === trueItem?.prop_value_id ? "开启" : "关闭"}
+            </span>
           </Space>
         </div>
       );
@@ -424,13 +486,30 @@ const BottomParamToolbar = ({
           </Popover>
         )}
       </Space>
-      <StyleSelect isGlobal />
-      <Button
-        type="primary"
-        shape="circle"
-        onClick={onSubmit}
-        icon={<ArrowUpOutlined />}
-      />
+      <Space size={16} align="center">
+        <StyleSelect isGlobal />
+        {/* 积分标签 */}
+        <span
+          style={{
+            padding: "2px 10px",
+            color: "#00c4f9",
+            fontSize: "16px",
+          }}
+        >
+          <StarOutlined style={{ color: "#00c4f9" }} />
+          {consumePoint}
+        </span>
+        <Button
+          shape="circle"
+          onClick={onSubmit}
+          icon={<ArrowUpOutlined />}
+          style={{
+            background: "#242424",
+            borderColor: "#242424",
+            color: "#fff",
+          }}
+        />
+      </Space>
     </div>
   );
 };

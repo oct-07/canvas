@@ -1,5 +1,10 @@
 import useCanvasStore from "@/store/canvasStore";
-import { UpCircleOutlined } from "@ant-design/icons";
+import {
+  ArrowUpOutlined,
+  PictureOutlined,
+  UpCircleOutlined,
+  VideoCameraOutlined,
+} from "@ant-design/icons";
 import { Menu } from "antd";
 import { useEffect, useRef } from "react";
 
@@ -114,13 +119,13 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
         {
           key: "add-image",
           label: "添加图片",
-          icon: <UpCircleOutlined />,
+          icon: <PictureOutlined />,
           onClick: handleAddImage,
         },
         {
           key: "add-video",
           label: "添加视频",
-          icon: <UpCircleOutlined />,
+          icon: <VideoCameraOutlined />,
           onClick: handleAddVideo,
         },
         { type: "divider" },
@@ -128,6 +133,13 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
           key: "paste",
           label: "粘贴",
           icon: <UpCircleOutlined />,
+          onClick: handlePaste,
+          disabled: !clipboard,
+        },
+        {
+          key: "upload",
+          label: "上传",
+          icon: <ArrowUpOutlined />,
           onClick: handlePaste,
           disabled: !clipboard,
         },

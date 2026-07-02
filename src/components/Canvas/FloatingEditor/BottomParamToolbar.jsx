@@ -35,14 +35,8 @@ const BottomParamToolbar = ({
   onChangeSteps,
   onSubmit,
 }) => {
-  // 直接从仓库拿全部模型、当前选中模型、切换模型方法
+  // 直接从仓库拿全部模型
   const modelList = useCanvasStore((state) => state.modelList);
-  const currentSelectModel = useCanvasStore(
-    (state) => state.currentSelectModel,
-  );
-  const setCurrentSelectModel = useCanvasStore(
-    (state) => state.setCurrentSelectModel,
-  );
 
   // 节点编辑相关
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
@@ -54,13 +48,18 @@ const BottomParamToolbar = ({
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
   const paramValues = editor?.data || {};
 
+  // 根据当前节点 data.model_id 从 modelList 中查找对应的模型
+  const currentModelId = paramValues.model_id;
+  const currentSelectModel =
+    modelList.find((m) => m.id === currentModelId) || null;
+
+  //  prop_list 从当前节点对应的模型里取，而不是全局状态
+  const propList = currentSelectModel?.prop_list || [];
+
   // 比例选中状态：优先从已保存参数里恢复
   const [currentRatio, setCurrentRatio] = useState(
     paramValues.aspect_ratio || "auto",
   );
-
-  //  参数列表
-  const propList = currentSelectModel?.prop_list || [];
 
   // 同步外部 paramValues 变化到比例状态
   useEffect(() => {
@@ -323,12 +322,17 @@ const BottomParamToolbar = ({
     );
   };
 
-  // 下拉菜单：点击直接调用仓库setCurrentSelectModel
+  // 下拉菜单：点击写入当前节点 data.model_id
   const modelMenuItems = (modelList || []).map((item) => ({
     label: item.model_title,
     key: item.id,
     onClick: () => {
-      setCurrentSelectModel(item);
+      if (!editor || !activeNodeId) return;
+      const newEditorData = {
+        ...editor.data,
+        model_id: item.id,
+      };
+      updateNodeEditorData(activeNodeId, newEditorData);
     },
   }));
 

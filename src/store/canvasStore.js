@@ -33,7 +33,6 @@ const initialState = {
   // ========== 模型相关状态 ==========
   modelList: [], // 全部模型数组（下拉菜单数据源，接口完整返回值）
   modelParamLoaded: false, // 接口是否已加载标记
-  currentSelectModel: null, // 当前选中的完整模型对象
 };
 
 /**
@@ -81,7 +80,6 @@ const useCanvasStore = create((set, get) => {
         // 重置模型相关缓存
         modelList: [],
         modelParamLoaded: false,
-        currentSelectModel: null,
       });
     },
 
@@ -101,17 +99,11 @@ const useCanvasStore = create((set, get) => {
       }
     },
 
-    // 设置当前选中模型
-    setCurrentSelectModel: (modelItem) => {
-      set({ currentSelectModel: modelItem });
-    },
-
     // 重置缓存，切换画布/清空场景时调用
     clearModelParamCache: () => {
       set({
         modelList: [],
         modelParamLoaded: false,
-        currentSelectModel: null,
       });
     },
 

@@ -1,36 +1,36 @@
-import react from '@vitejs/plugin-react'
-import path from 'path'
-import { defineConfig } from 'vite'
+import react from "@vitejs/plugin-react";
+import path from "path";
+import { defineConfig } from "vite";
 export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, 'src'),
+      "@": path.resolve(__dirname, "src"),
     },
   },
   server: {
     port: 3000,
     host: true,
     proxy: {
-      '/api': {
-        target: 'http://ai.hnqzhj.com',
+      "/api": {
+        target: "https://ai.hnqzhj.com",
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      }
-    }
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
+    },
   },
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
           // 第三方库分包优化
-          'vendor-react': ['react', 'react-dom'],
-          'vendor-antd': ['antd', '@ant-design/icons'],
-          'vendor-xyflow': ['@xyflow/react'],
-          'vendor-utils': ['axios', 'qs', 'zustand', 'dayjs'],
+          "vendor-react": ["react", "react-dom"],
+          "vendor-antd": ["antd", "@ant-design/icons"],
+          "vendor-xyflow": ["@xyflow/react"],
+          "vendor-utils": ["axios", "qs", "zustand", "dayjs"],
         },
       },
     },
     chunkSizeWarningLimit: 2000,
   },
-})
+});

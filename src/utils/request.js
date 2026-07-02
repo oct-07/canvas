@@ -6,7 +6,7 @@ let isTokenInvalid = false;
 
 const createAxiosInstance = (options = {}) => {
   const instance = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
+    baseURL: "https://ai.hnqzhj.com",
     timeout: options.timeout || 30000,
     headers: {
       "Content-Type": "application/json",
@@ -26,7 +26,7 @@ const createAxiosInstance = (options = {}) => {
       // 临时测试固定token
       const fixedToken = "c8175917-0c19-4d50-9383-8a5360a76c43";
       config.headers.token = fixedToken;
-
+      config.headers.TeamId = 3;
       return config;
     },
     (error) => {
@@ -42,7 +42,7 @@ const createAxiosInstance = (options = {}) => {
         return res;
       }
       if (res.code !== 1) {
-        message.error(res.message || "请求失败");
+        message.error(res.msg || "请求失败");
         return Promise.reject(res);
       }
       return res.data;

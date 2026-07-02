@@ -7,7 +7,7 @@
  * UI Slice 初始状态
  */
 export const uiInitialState = {
-  currentTool: 'select',
+  currentTool: "select",
   isSidebarOpen: true,
   isPreviewOpen: false,
   contextMenu: {
@@ -29,15 +29,24 @@ export const uiInitialState = {
  * @returns {object} UI相关的 state 和 actions
  */
 export const createUISlice = (getStore, setStore) => ({
-  currentTool: 'select',
+  currentTool: "select",
   setCurrentTool: (tool) => setStore({ currentTool: tool }),
 
   isSidebarOpen: true,
-  toggleSidebar: () => setStore((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  toggleSidebar: () =>
+    setStore((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
 
   isPreviewOpen: false,
-  togglePreview: () => setStore((state) => ({ isPreviewOpen: !state.isPreviewOpen })),
-
+  togglePreview: () =>
+    setStore((state) => ({ isPreviewOpen: !state.isPreviewOpen })),
+  // 设置当前选中连线
+  setActiveEdgeId: (edgeId) => {
+    setStore({ selectedEdgeId: edgeId });
+  },
+  // 清空选中连线
+  clearActiveEdge: () => {
+    setStore({ selectedEdgeId: null });
+  },
   contextMenu: {
     visible: false,
     x: 0,

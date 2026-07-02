@@ -11,12 +11,20 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import useCanvasStore, { validateConnection } from "@/store/canvasStore";
 import CanvasHeader from "./CanvasHeader";
 import ContextMenu from "./ContextMenu";
+import CustomEdge from "./CustomEdge";
 import { nodeTypes } from "./CustomNode";
 import SideBar from "./SideBar";
 
 import { getNodeScreenPos } from "@/utils/canvasEditor";
 
 const CanvasContent = () => {
+  //自定义连线类型
+  const edgeTypes = useMemo(
+    () => ({
+      custom: CustomEdge,
+    }),
+    [],
+  );
   const { screenToFlowPosition } = useReactFlow();
   const draggedNodeIdRef = useRef(null);
 
@@ -54,7 +62,7 @@ const CanvasContent = () => {
       const newEdge = {
         ...connection,
         id: `edge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type: "default",
+        type: "custom",
         animated: false,
         style: { stroke: "#434343", strokeWidth: 2 },
       };
@@ -349,6 +357,7 @@ const CanvasContent = () => {
 
       <div style={flowWrapperStyle}>
         <ReactFlow
+          edgeTypes={edgeTypes}
           minZoom={0.5}
           maxZoom={3.0}
           nodes={nodes}
@@ -371,7 +380,7 @@ const CanvasContent = () => {
           snapToGrid
           snapGrid={[15, 15]}
           defaultEdgeOptions={{
-            type: "default",
+            type: "custom",
             animated: false,
             style: { stroke: "#434343", strokeWidth: 2 },
           }}

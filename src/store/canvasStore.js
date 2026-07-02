@@ -108,12 +108,19 @@ const useCanvasStore = create((set, get) => {
     },
 
     // 组合所有 slice 的 actions
+    //节点操作
     ...createNodesSlice(getStore, setStore),
+    //连线操作
     ...createEdgesSlice(getStore, setStore),
+    // UI 界面控制
     ...createUISlice(getStore, setStore),
+    // 撤销重做
     ...createHistorySlice(getStore, setStore),
+    //复制粘贴
     ...createClipboardSlice(getStore, setStore),
+    //素材管理
     ...createMaterialsSlice(getStore, setStore),
+    //画布底层
     ...createCanvasSlice(getStore, setStore),
   };
 });

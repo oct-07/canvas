@@ -7,7 +7,7 @@ import {
   NotificationOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, Popover, Radio, Space, Switch } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // 比例数据源：固定 key、展示文案、宽高比值
 // 底层公式：height = width ÷ (w / h)
@@ -67,6 +67,41 @@ const BottomParamToolbar = ({
       setCurrentRatio(paramValues.aspect_ratio);
     }
   }, [paramValues?.aspect_ratio]);
+
+  // 节点首次打开且 modelList 加载完成后，自动填入第一个模型 + 第一个参数
+  const initRef = useRef(false);
+  useEffect(() => {
+    initRef.current = false;
+  }, [activeNodeId]);
+
+  useEffect(() => {
+    console.log("[Init] trigger", {
+      activeNodeId,
+      hasEditor: !!editor,
+      modelListLen: modelList.length,
+      hasModelId: !!paramValues.model_id,
+      initRef: initRef.current,
+    });
+    if (!activeNodeId || !editor || modelList.length === 0) return;
+    if (paramValues.model_id) return;
+    if (initRef.current) return;
+    initRef.current = true;
+
+    const firstModel = modelList[0];
+    console.log("[Init] firstModel", firstModel);
+    if (!firstModel) return;
+
+    const newData = { ...paramValues, model_id: firstModel.id };
+    firstModel.prop_list?.forEach((prop) => {
+      if (Array.isArray(prop.prop_values_list) && prop.prop_values_list.length > 0) {
+        const firstVal = prop.prop_values_list[0];
+        newData[prop.prop_str] = firstVal.prop_value_id;
+        console.log("[Init] set", prop.prop_str, "=", firstVal.prop_value_id, firstVal.prop_value_name);
+      }
+    });
+    console.log("[Init] newData", newData);
+    updateNodeEditorData(activeNodeId, newData);
+  }, [activeNodeId, editor, modelList]);
 
   // 参数修改回调
   const handleParamChange = (propKey, value) => {

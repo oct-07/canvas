@@ -1,11 +1,15 @@
 import useCanvasStore from "@/store/canvasStore";
 import { getNodeStyleFromAspect } from "@/utils/aspectRatioMap";
 import { PictureOutlined } from "@ant-design/icons";
-import { Handle, Position } from "@xyflow/react";
+import { Position } from "@xyflow/react";
 import { memo, useCallback, useMemo } from "react";
 import FloatingEditor from "../FloatingEditor";
+import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
+import PlusHandle from "../CustomPoint/PlusHandle";
 
 const ImageNode = memo(({ id, data, selected }) => {
+  const { isTarget, tiltX, tiltY, canConnect } = useNodeMagnet(id);
+  const magnetColor = canConnect ? "#52c41a" : "#ff4d4f";
   const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
   const showActiveEditor = useCanvasStore((state) => state.showActiveEditor);
   const setActiveNodeId = useCanvasStore((state) => state.setActiveNodeId);
@@ -80,26 +84,31 @@ const ImageNode = memo(({ id, data, selected }) => {
         width: previewStyle.width,
         background: "#262626",
         borderRadius: 12,
-        border: selected ? "2px solid #177ddc" : "1px solid #303030",
+        border: isTarget
+          ? `2px solid ${magnetColor}`
+          : selected
+            ? "2px solid #177ddc"
+            : "1px solid #303030",
         overflow: "visible",
-        boxShadow: selected
-          ? "0 0 20px rgba(23, 125, 220, 0.3)"
-          : "0 4px 12px rgba(0,0,0,0.3)",
-        transition: "all 0.2s ease",
+        boxShadow: isTarget
+          ? `0 0 0 2px ${magnetColor}66, 0 8px 24px ${magnetColor}44`
+          : selected
+            ? "0 0 20px rgba(23, 125, 220, 0.3)"
+            : "0 4px 12px rgba(0,0,0,0.3)",
+        transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+        transformStyle: "preserve-3d",
+        transform: isTarget
+          ? `perspective(700px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`
+          : "none",
         cursor: "pointer",
       }}
     >
-      <Handle
+      <PlusHandle
         type="target"
         position={Position.Left}
         id="input"
-        style={{
-          background: "#1890ff",
-          width: 10,
-          height: 10,
-          border: "2px solid #262626",
-          left: -5,
-        }}
+        color="#1890ff"
+        offsetKey="left"
       />
 
       <div
@@ -147,17 +156,12 @@ const ImageNode = memo(({ id, data, selected }) => {
         </span>
       </div>
 
-      <Handle
+      <PlusHandle
         type="source"
         position={Position.Right}
         id="output"
-        style={{
-          background: "#1890ff",
-          width: 10,
-          height: 10,
-          border: "2px solid #262626",
-          right: -5,
-        }}
+        color="#1890ff"
+        offsetKey="right"
       />
 
       {isThisEditorOpen && (

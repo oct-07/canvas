@@ -14,6 +14,8 @@ import ContextMenu from "./ContextMenu";
 import CustomEdge from "./CustomEdge";
 import { nodeTypes } from "./CustomNode";
 import SideBar from "./SideBar";
+import MagnetHandle from "./CustomPoint/MagnetHandle";
+import { useConnectionMagnet } from "./CustomPoint/useConnectionMagnet";
 
 import { getCanvasDetail } from "@/api";
 import useStyleStore from "@/store/styleStore";
@@ -29,6 +31,10 @@ const CanvasContent = () => {
   );
   const { screenToFlowPosition } = useReactFlow();
   const draggedNodeIdRef = useRef(null);
+
+  // 连接点磁吸交互（浮动加号手柄 / 卡片 3D 倾斜 / 可连反馈）
+  const { onConnectStart, onConnectEnd, markNativeConnect } =
+    useConnectionMagnet();
 
   const {
     nodes,
@@ -122,6 +128,8 @@ const CanvasContent = () => {
   }, [setGlobalStyle]);
   const handleConnect = useCallback(
     (connection) => {
+      // 标记原生（精确落在手柄）连线已处理，避免磁吸重复建边
+      markNativeConnect();
       const newEdge = {
         ...connection,
         id: `edge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -132,7 +140,7 @@ const CanvasContent = () => {
       useCanvasStore.getState().setEdges([...edges, newEdge]);
       saveHistory();
     },
-    [edges, saveHistory],
+    [edges, saveHistory, markNativeConnect],
   );
 
   const handlePaneContextMenu = useCallback(
@@ -428,6 +436,8 @@ const CanvasContent = () => {
           onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={handleConnect}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
           onPaneClick={handlePaneClick}
           onPaneContextMenu={handlePaneContextMenu}
           onNodeContextMenu={handleNodeContextMenu}
@@ -464,6 +474,8 @@ const CanvasContent = () => {
           />
         </ReactFlow>
       </div>
+
+      <MagnetHandle />
 
       <ContextMenu onAddImage={handleAddImage} onAddVideo={handleAddVideo} />
     </div>

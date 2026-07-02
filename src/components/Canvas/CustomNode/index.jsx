@@ -6,10 +6,12 @@ import {
   PictureOutlined,
   RobotOutlined,
 } from "@ant-design/icons";
-import { Handle, Position } from "@xyflow/react";
+import { Position } from "@xyflow/react";
 import { memo } from "react";
 import ImageNode from "./ImageNode";
 import VideoNode from "./VideoNode";
+import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
+import PlusHandle from "../CustomPoint/PlusHandle";
 
 /**
  * 自定义节点组件 - 通用的文本/AI 节点
@@ -17,6 +19,7 @@ import VideoNode from "./VideoNode";
  */
 const CustomNode = ({ id, data, type, selected }) => {
   const { label = "", description = "", icon } = data;
+  const { isTarget, tiltX, tiltY, canConnect } = useNodeMagnet(id);
 
   const getNodeIcon = () => {
     if (icon) return icon;
@@ -49,18 +52,31 @@ const CustomNode = ({ id, data, type, selected }) => {
     }
   };
 
+  // 磁吸命中反馈：绿色可连 / 红色不可连
+  const magnetColor = canConnect ? "#52c41a" : "#ff4d4f";
+
   const nodeStyle = {
     padding: "12px 16px",
     background: getNodeStyle().background,
-    border: `1px solid ${getNodeStyle().borderColor}`,
+    border: `1px solid ${
+      isTarget ? magnetColor : getNodeStyle().borderColor
+    }`,
     borderRadius: 8,
     minWidth: 150,
     maxWidth: 300,
-    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.3)",
-    transition: "all 0.2s ease",
-    ...(selected && {
-      boxShadow: `0 0 0 2px ${getNodeStyle().borderColor}40`,
-    }),
+    boxShadow: isTarget
+      ? `0 0 0 2px ${magnetColor}66, 0 8px 24px ${magnetColor}44`
+      : "0 2px 8px rgba(0, 0, 0, 0.3)",
+    transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+    // 卡片 3D 倾斜（跟随光标）
+    transformStyle: "preserve-3d",
+    transform: isTarget
+      ? `perspective(600px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`
+      : "none",
+    ...(selected &&
+      !isTarget && {
+        boxShadow: `0 0 0 2px ${getNodeStyle().borderColor}40`,
+      }),
   };
 
   const headerStyle = {
@@ -92,17 +108,12 @@ const CustomNode = ({ id, data, type, selected }) => {
   return (
     <div className={`canvas-node canvas-node-${type}`} style={nodeStyle}>
       {/* 左侧 Input 端口 */}
-      <Handle
+      <PlusHandle
         type="target"
         position={Position.Left}
         id="input"
-        style={{
-          background: getNodeStyle().borderColor,
-          width: 10,
-          height: 10,
-          border: "2px solid #262626",
-          left: -5,
-        }}
+        color="#1890ff"
+        offsetKey="left"
       />
 
       {/* 节点内容 */}
@@ -114,17 +125,12 @@ const CustomNode = ({ id, data, type, selected }) => {
       {description && <div style={contentStyle}>{description}</div>}
 
       {/* 右侧 Output 端口 */}
-      <Handle
+      <PlusHandle
         type="source"
         position={Position.Right}
         id="output"
-        style={{
-          background: getNodeStyle().borderColor,
-          width: 10,
-          height: 10,
-          border: "2px solid #262626",
-          right: -5,
-        }}
+        color="#1890ff"
+        offsetKey="right"
       />
     </div>
   );

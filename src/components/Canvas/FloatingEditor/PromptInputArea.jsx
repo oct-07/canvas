@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import "./PromptInputArea.css";
+// 改为CSS Modules导入
+import styles from "./PromptInputArea.module.css";
 
 const defaultAssetList = [
   {
@@ -73,46 +74,49 @@ const PromptInputArea = ({
     removeList.forEach((n) => n.parentNode?.removeChild(n));
   }, []);
 
-  const createAtItem = useCallback((item) => {
-    const atItem = document.createElement("span");
-    atItem.className = "at-item";
-    atItem.contentEditable = "false";
-    atItem.dataset.id = `${item.type}${item.main_id}`;
+  const createAtItem = useCallback(
+    (item) => {
+      const atItem = document.createElement("span");
+      atItem.className = styles.atItem;
+      atItem.contentEditable = "false";
+      atItem.dataset.id = `${item.type}${item.main_id}`;
 
-    atItem.onclick = (e) => {
-      e.stopPropagation();
-      replaceTargetRef.current = atItem;
-      const rect = atItem.getBoundingClientRect();
-      const wrapRect = wrapRef.current.getBoundingClientRect();
-      setAtMentionStyle({
-        left: rect.left - wrapRect.left,
-        top: rect.bottom - wrapRect.top + 6,
-      });
-      setAtMentionVisible(true);
-    };
+      atItem.onclick = (e) => {
+        e.stopPropagation();
+        replaceTargetRef.current = atItem;
+        const rect = atItem.getBoundingClientRect();
+        const wrapRect = wrapRef.current.getBoundingClientRect();
+        setAtMentionStyle({
+          left: rect.left - wrapRect.left,
+          top: rect.bottom - wrapRect.top + 6,
+        });
+        setAtMentionVisible(true);
+      };
 
-    const imgBox = document.createElement("div");
-    imgBox.className = "at-img-box";
-    const img = document.createElement("img");
-    img.className = "at-img";
-    img.src = item.image;
-    img.loading = "lazy";
-    img.onerror = () => {
-      img.style.display = "none";
-      const placeholder = document.createElement("div");
-      placeholder.className = "at-img-placeholder";
-      placeholder.innerHTML = "<i>🖼</i>";
-      imgBox.appendChild(placeholder);
-    };
-    imgBox.appendChild(img);
+      const imgBox = document.createElement("div");
+      imgBox.className = styles.atImgBox;
+      const img = document.createElement("img");
+      img.className = styles.atImg;
+      img.src = item.image;
+      img.loading = "lazy";
+      img.onerror = () => {
+        img.style.display = "none";
+        const placeholder = document.createElement("div");
+        placeholder.className = styles.atImgPlaceholder;
+        placeholder.innerHTML = "<i>🖼</i>";
+        imgBox.appendChild(placeholder);
+      };
+      imgBox.appendChild(img);
 
-    const textSpan = document.createElement("span");
-    textSpan.className = "at-text";
-    textSpan.textContent = item.label;
+      const textSpan = document.createElement("span");
+      textSpan.className = styles.atText;
+      textSpan.textContent = item.label;
 
-    atItem.append(imgBox, textSpan);
-    return atItem;
-  }, []);
+      atItem.append(imgBox, textSpan);
+      return atItem;
+    },
+    [styles],
+  );
 
   const insertAtItem = useCallback(
     (item) => {
@@ -223,7 +227,7 @@ const PromptInputArea = ({
       const range = sel.getRangeAt(0);
       let node = range.startContainer;
       if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-      const atItem = closestByClass(node, "at-item");
+      const atItem = closestByClass(node, styles.atItem);
       if (!atItem) return;
       e.preventDefault();
       const prev = atItem.previousSibling;
@@ -244,7 +248,7 @@ const PromptInputArea = ({
       sel.removeAllRanges();
       sel.addRange(newRange);
     },
-    [closestByClass, onChangePrompt],
+    [closestByClass, onChangePrompt, styles],
   );
 
   const handleClick = useCallback(
@@ -256,17 +260,19 @@ const PromptInputArea = ({
     [atMentionVisible, updateAtAnchorPosition],
   );
 
+  // 修复：querySelector 拼接哈希类名
   useEffect(() => {
     const globalClick = (e) => {
       const wrap = wrapRef.current;
-      const popover = document.querySelector(".at-media-popover");
+      const popoverClass = `.${styles.atMediaPopover}`;
+      const popover = document.querySelector(popoverClass);
       if (!wrap.contains(e.target) && popover && !popover.contains(e.target)) {
         setAtMentionVisible(false);
       }
     };
     window.addEventListener("mousedown", globalClick);
     return () => window.removeEventListener("mousedown", globalClick);
-  }, []);
+  }, [styles]);
 
   useEffect(() => {
     if (lockRef.current) return;
@@ -282,10 +288,11 @@ const PromptInputArea = ({
   const filterAssets = assetList;
 
   return (
-    <div ref={wrapRef} className="prompt-editor-wrap">
+    // JSX静态class全部替换styles
+    <div ref={wrapRef} className={styles.promptEditorWrap}>
       <div
         ref={editorRef}
-        className="prompt-editor"
+        className={styles.promptEditor}
         contentEditable="true"
         data-placeholder="请输入提示词...输入@引用素材"
         suppressContentEditableWarning
@@ -298,18 +305,18 @@ const PromptInputArea = ({
       />
 
       {atMentionVisible && filterAssets.length > 0 && (
-        <div className="at-media-popover" style={atMentionStyle}>
+        <div className={styles.atMediaPopover} style={atMentionStyle}>
           {filterAssets.map((item) => (
             <div
               key={`${item.type}${item.main_id}`}
-              className="mention-item"
+              className={styles.mentionItem}
               onClick={() => handleAtSelect(item)}
             >
-              <div className="item-left">
+              <div className={styles.itemLeft}>
                 <img src={item.image} alt="" />
                 <span>{item.label}</span>
               </div>
-              <span className="item-tag">@{item.main_id}</span>
+              <span className={styles.itemTag}>@{item.main_id}</span>
             </div>
           ))}
         </div>

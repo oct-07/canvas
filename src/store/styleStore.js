@@ -2,8 +2,8 @@
  * 风格状态管理 (Zustand Store)
  * 统一管理全局风格、节点独立风格、风格列表
  */
+import { getStylePresetList } from "@/api/visual";
 import { create } from "zustand";
-import { getStylePresetList, addStyle } from "@/api/visual";
 
 const useStyleStore = create((set, get) => ({
   // ========== 状态 ==========
@@ -15,32 +15,17 @@ const useStyleStore = create((set, get) => ({
   // ========== Actions ==========
 
   /**
-   * 调用接口拉取风格列表，维护loading
-   */
-  fetchStyleList: async () => {
-    set({ styleLoading: true });
-    try {
-      const res = await getStylePresetList();
-      const list = Array.isArray(res) ? res : res?.data || [];
-      set({ styleList: list, styleLoading: false });
-    } catch (err) {
-      console.error("获取风格列表失败：", err);
-      set({ styleLoading: false });
-    }
-  },
-
-  /**
-   * 根据 type 调用接口拉取风格列表
+   * 拉取风格列表
    * @param {number|null} type - 分类类型：1=真人，2=2D，3=3D，4=自定义，不传/null=全部
    */
-  fetchStyleByType: async (type) => {
+  fetchStyleList: async (type = null) => {
     set({ styleLoading: true });
     try {
       const res = await getStylePresetList(type);
       const list = Array.isArray(res) ? res : res?.data || [];
       set({ styleList: list, styleLoading: false });
     } catch (err) {
-      console.error("按分类获取风格列表失败：", err);
+      console.error("获取风格列表失败：", err);
       set({ styleLoading: false });
     }
   },
@@ -91,9 +76,10 @@ const useStyleStore = create((set, get) => ({
   },
 
   /**
-   * 新增风格后调用，重新拉取列表
+   * 新增风格后调用，重新拉取全部列表
    */
   refreshStyleList: async () => {
+    // 不传参数，默认拉取全部
     await get().fetchStyleList();
   },
 }));

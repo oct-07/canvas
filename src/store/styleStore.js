@@ -7,23 +7,34 @@ import { create } from "zustand";
 
 const useStyleStore = create((set, get) => ({
   // ========== 状态 ==========
-  styleList: [], // 风格数组（接口返回的完整列表）
-  styleLoading: false, // 风格列表加载状态
-  globalStyle: null, // 全局选中风格id（null表示未选中）
-  nodeStyleMap: {}, // Record<nodeId, styleId>，仅存储和全局不一致的节点
+  styleListMap: {},         // 按 type 缓存：{ 'all': [...], '1': [...], '2': [...], '3': [...], '4': [...] }
+  styleLoadedMap: {},       // 加载标记：{ 'all': true, '1': false, ... }
+  styleLoading: false,
+  globalStyle: null,
+  nodeStyleMap: {},
 
   // ========== Actions ==========
 
   /**
-   * 拉取风格列表
-   * @param {number|null} type - 分类类型：1=真人，2=2D，3=3D，4=自定义，不传/null=全部
+   * 拉取风格列表（按 type 分缓存，同一个 type 只请求一次）
+   * @param {number|null} type - 1=真人，2=2D，3=3D，4=自定义，null=全部
    */
   fetchStyleList: async (type = null) => {
+    const cacheKey = type ?? 'all';
+    const state = get();
+
+    // 该 type 已加载过，不再重复请求
+    if (state.styleLoadedMap[cacheKey]) return;
+
     set({ styleLoading: true });
     try {
       const res = await getStylePresetList(type);
       const list = Array.isArray(res) ? res : res?.data || [];
-      set({ styleList: list, styleLoading: false });
+      set((s) => ({
+        styleListMap: { ...s.styleListMap, [cacheKey]: list },
+        styleLoadedMap: { ...s.styleLoadedMap, [cacheKey]: true },
+        styleLoading: false,
+      }));
     } catch (err) {
       console.error("获取风格列表失败：", err);
       set({ styleLoading: false });

@@ -76,8 +76,8 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
         ...baseStyle,
         top: 0,
         left: 0,
-        transform: "translateX(-50%)", // 水平居中800px宽面板
-        width: "800px",
+        transform: "translateX(-50%)",
+        width: "900px",
         height: "600px",
         borderRadius: "10px",
       };
@@ -85,9 +85,9 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
 
     return {
       ...baseStyle,
-      top: "calc(50% + 100px)",
-      width: 820,
-      height: 400,
+      top: "calc(50% + 160px)",
+      width: 900,
+      height: 300,
     };
   }, [visible, isFullScreen]);
 

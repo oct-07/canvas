@@ -31,8 +31,8 @@ const initialState = {
   ...canvasInitialState,
 
   // ========== 模型相关状态 ==========
-  modelList: [], // 全部模型数组（下拉菜单数据源，接口完整返回值）
-  modelParamLoaded: false, // 接口是否已加载标记
+  modelListMap: {},         // 按 model_type 分缓存：{ '1': [...], '2': [...] }
+  modelParamLoadedMap: {},  // 加载标记：{ '1': true, '2': false }
 };
 
 /**
@@ -78,22 +78,26 @@ const useCanvasStore = create((set, get) => {
         historyIndex: -1,
         clipboard: null,
         // 重置模型相关缓存
-        modelList: [],
-        modelParamLoaded: false,
+        modelListMap: {},
+        modelParamLoadedMap: {},
       });
     },
 
     // ========== 模型相关方法 ==========
-    // 加载模型参数
-    loadModelSkuParams: async () => {
+    // 加载模型参数（按 model_type 分缓存）
+    loadModelSkuParams: async (modelType = "1") => {
       const state = get();
-      if (state.modelParamLoaded) return;
+      const cacheKey = String(modelType);
+
+      // 该 model_type 已加载过，不再请求
+      if (state.modelParamLoadedMap[cacheKey]) return;
+
       try {
-        const res = await getModelSku({ model_type: "1" });
-        set({
-          modelList: res,
-          modelParamLoaded: true,
-        });
+        const res = await getModelSku({ model_type: modelType });
+        set((s) => ({
+          modelListMap: { ...s.modelListMap, [cacheKey]: res },
+          modelParamLoadedMap: { ...s.modelParamLoadedMap, [cacheKey]: true },
+        }));
       } catch (err) {
         console.error("预加载模型接口失败：", err);
       }
@@ -102,8 +106,8 @@ const useCanvasStore = create((set, get) => {
     // 重置缓存，切换画布/清空场景时调用
     clearModelParamCache: () => {
       set({
-        modelList: [],
-        modelParamLoaded: false,
+        modelListMap: {},
+        modelParamLoadedMap: {},
       });
     },
 

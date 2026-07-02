@@ -54,12 +54,25 @@ const CanvasContent = () => {
     loadModelSkuParams,
   } = useCanvasStore();
 
-  // 画布挂载自动请求一次模型参数接口
-  useEffect(() => {
-    loadModelSkuParams({});
-  }, [loadModelSkuParams]);
-
   const setGlobalStyle = useStyleStore((state) => state.setGlobalStyle);
+  const fetchStyleList = useStyleStore((state) => state.fetchStyleList);
+
+  // 画布挂载时加载所有风格分类 + 两种模型（用 ref 防止 StrictMode 重复调用）
+  const loadRef = useRef(false);
+  useEffect(() => {
+    if (loadRef.current) return;
+    loadRef.current = true;
+    // 风格全量 + 各分类
+    fetchStyleList(null);
+    fetchStyleList(1);
+    fetchStyleList(2);
+    fetchStyleList(3);
+    fetchStyleList(4);
+    // 两种模型
+    loadModelSkuParams("1");
+    loadModelSkuParams("2");
+  }, [loadModelSkuParams, fetchStyleList]);
+
   const [canvasName, setCanvasName] = useState("");
 
   useEffect(() => {
@@ -258,7 +271,7 @@ const CanvasContent = () => {
         id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: "image",
         position,
-        data: {},
+        data: { model_type: "2" },
       };
       addNode(newNode);
     },
@@ -275,7 +288,7 @@ const CanvasContent = () => {
         id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: "video",
         position,
-        data: {},
+        data: { model_type: "1" },
       };
       addNode(newNode);
     },

@@ -1,10 +1,9 @@
 import useCanvasStore from "@/store/canvasStore";
-import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
+import { getNodeStyleFromAspect } from "@/utils/aspectRatioMap";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { Handle, Position } from "@xyflow/react";
 import { memo, useMemo } from "react";
 import FloatingEditor from "../FloatingEditor";
-import { getNodeStyleFromAspect } from "@/utils/aspectRatioMap";
 
 /**
  * 视频节点组件 - 显示视频缩略图的节点
@@ -217,16 +216,6 @@ const VideoNode = memo(({ id, data, selected }) => {
             }}
             onClose={() => hideActiveEditor(id)}
           />
-          <div
-            style={{
-              marginTop: 8,
-            }}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
-            onMouseUp={(e) => e.stopPropagation()}
-          >
-            <StyleSelect isGlobal={false} nodeId={id} />
-          </div>
         </div>
       )}
     </div>

@@ -158,8 +158,8 @@ function StyleDropdownPanel({
   onChange,
   openAddModal,
   styleList,
+  styleLoadedMap,
   styleLoading,
-  fetchStyleList,
   activeTab,
   onTabChange,
 }) {
@@ -172,8 +172,7 @@ function StyleDropdownPanel({
   ];
 
   const handleTabChange = (tab) => {
-    onTabChange(tab.key);
-    fetchStyleList(tab.type);
+    onTabChange(tab.key);  // 父组件通过 onDropdownOpenChange 处理懒加载
   };
 
   const selectCard = (item) => {
@@ -243,7 +242,7 @@ function StyleDropdownPanel({
           })}
         </div>
 
-        {!styleLoading && styleList.length === 0 && (
+        {styleList.length === 0 && (
           <div className={styles.emptyTip}>暂无风格数据</div>
         )}
       </div>
@@ -264,7 +263,8 @@ export default function StyleSelect({
   const [selectedStyleName, setSelectedStyleName] = useState("");
   const isAddingModalOpen = useRef(false);
 
-  const styleList = useStyleStore((state) => state.styleList);
+  const styleListMap = useStyleStore((state) => state.styleListMap);
+  const styleLoadedMap = useStyleStore((state) => state.styleLoadedMap);
   const styleLoading = useStyleStore((state) => state.styleLoading);
   const globalStyle = useStyleStore((state) => state.globalStyle);
   const nodeStyleMap = useStyleStore((state) => state.nodeStyleMap);
@@ -278,6 +278,16 @@ export default function StyleSelect({
     const map = { all: null, real: 1, "2d": 2, "3d": 3, custom: 4 };
     return map[tabKey] ?? null;
   }, []);
+
+  // 根据当前 tab 从缓存中取列表
+  const getCurrentStyleList = useCallback(() => {
+    const typeMap = { all: null, real: 1, "2d": 2, "3d": 3, custom: 4 };
+    const targetType = typeMap[activeTab];
+    const cacheKey = targetType ?? "all";
+    return styleListMap[cacheKey] || [];
+  }, [activeTab, styleListMap]);
+
+  const currentStyleList = getCurrentStyleList();
 
   const handleSelect = useCallback(
     (styleId, name) => {
@@ -319,7 +329,7 @@ export default function StyleSelect({
     console.log("新增风格：", newStyle);
     try {
       await addStyle(newStyle);
-      await fetchStyleList(4);
+      await fetchStyleList(null);
       setActiveTab("custom");
     } catch (err) {
       console.error("添加风格失败：", err);
@@ -331,21 +341,23 @@ export default function StyleSelect({
     setDropdownOpen(open);
 
     if (open) {
-      fetchStyleList(getTabType(activeTab));
+      // 首次打开时，一次性预加载所有 tab 数据，后续切换 tab 直接读缓存
+      const allTypes = [null, 1, 2, 3, 4];
+      allTypes.forEach((type) => {
+        const key = type ?? "all";
+        if (!styleLoadedMap[key]) {
+          fetchStyleList(type);
+        }
+      });
     }
   };
 
-  useEffect(() => {
-    fetchStyleList(null);
-  }, []);
-
-  useEffect(() => {
-    fetchStyleList(getTabType(activeTab));
-  }, [activeTab, fetchStyleList, getTabType]);
+  // 合并所有缓存的列表，用于查找风格名称（跨 tab 搜索）
+  const allStyleList = Object.values(styleListMap).flat();
 
   const getDisplayText = () => {
     if (!currentValue) return "请选择风格";
-    const matched = styleList.find((item) => item.style_id === currentValue);
+    const matched = allStyleList.find((item) => item.style_id === currentValue);
     const matchedName = matched?.name;
     return selectedStyleName || matchedName || currentValue;
   };
@@ -362,9 +374,9 @@ export default function StyleSelect({
             selectVal={currentValue}
             onChange={handleSelect}
             openAddModal={openAddModal}
-            styleList={styleList}
+            styleList={currentStyleList}
+            styleLoadedMap={styleLoadedMap}
             styleLoading={styleLoading}
-            fetchStyleList={fetchStyleList}
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />

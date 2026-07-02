@@ -14,13 +14,22 @@ import { useEffect, useRef, useState } from "react";
 // 底层公式：height = width ÷ (w / h)
 // 预览框宽度固定 20px，高度由 aspect-ratio 原生 CSS 自动计算
 const RATIO_LIST = [
-  { key: "auto", label: "Auto", ratio: null },
-  { key: "16:9", label: "16:9", ratio: "16 / 9" },
-  { key: "4:3", label: "4 / 3", ratio: "4 / 3" },
+  { key: "auto", label: "auto", ratio: null },
   { key: "1:1", label: "1:1", ratio: "1 / 1" },
+  { key: "4:3", label: "4:3", ratio: "4 / 3" },
   { key: "3:4", label: "3:4", ratio: "3 / 4" },
+  { key: "16:9", label: "16:9", ratio: "16 / 9" },
   { key: "9:16", label: "9:16", ratio: "9 / 16" },
+  { key: "3:2", label: "3:2", ratio: "3 / 2" },
+  { key: "2:3", label: "2:3", ratio: "2 / 3" },
+  { key: "5:4", label: "5:4", ratio: "5 / 4" },
+  { key: "4:5", label: "4:5", ratio: "4 / 5" },
+  { key: "2:1", label: "2:1", ratio: "2 / 1" },
+  { key: "1:2", label: "1:2", ratio: "1 / 2" },
   { key: "21:9", label: "21:9", ratio: "21 / 9" },
+  { key: "9:21", label: "9:21", ratio: "9 / 21" },
+  { key: "3:1", label: "3:1", ratio: "3 / 1" },
+  { key: "1:3", label: "1:3", ratio: "1 / 3" },
 ];
 
 const BottomParamToolbar = ({
@@ -36,8 +45,8 @@ const BottomParamToolbar = ({
   onChangeSteps,
   onSubmit,
 }) => {
-  // 直接从仓库拿全部模型
-  const modelList = useCanvasStore((state) => state.modelList);
+  // 从 modelListMap 中取当前节点 model_type 对应的模型
+  const modelListMap = useCanvasStore((state) => state.modelListMap);
 
   // 节点编辑相关
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
@@ -48,6 +57,9 @@ const BottomParamToolbar = ({
 
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
   const paramValues = editor?.data || {};
+
+  const nodeModelType = paramValues.model_type;
+  const modelList = nodeModelType ? modelListMap[nodeModelType] || [] : [];
 
   // 根据当前节点 data.model_id 从 modelList 中查找对应的模型
   const currentModelId = paramValues.model_id;
@@ -221,7 +233,8 @@ const BottomParamToolbar = ({
   // 公式：height = 20px ÷ (宽比值 / 高比值)
   // 例：21:9 → 40 ÷ (21/9) ≈ 17.14px；1:1 → 40 ÷ 1 = 40px
   const getPreviewBoxStyle = (ratioStr) => ({
-    width: "20px",
+    height: "14px",
+    width: "auto",
     aspectRatio: ratioStr || "auto",
     border: "1px solid #888",
     borderRadius: "2px",
@@ -235,27 +248,26 @@ const BottomParamToolbar = ({
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    gap: "6px",
-    padding: "10px 4px",
     borderRadius: "8px",
     border: isSelected ? "2px solid #fff" : "1px solid #555",
     background: isSelected ? "#333" : "#2c2c2c",
     color: "#ddd",
     cursor: "pointer",
     transition: "all 0.2s ease",
-    minWidth: "64px",
+    width: "50px",
     flex: "1 1 auto",
-    height: "65px",
+    height: "40px",
+    gap: "4px",
+    padding: "2px",
   });
 
   // 网格布局：5 列自适应
   const ratioGridStyle = {
     display: "grid",
-    gridTemplateColumns: "repeat(5, 1fr)",
+    gridTemplateColumns: "repeat(auto-fit, minmax(50px, 1fr))",
     gap: "10px",
     marginTop: "12px",
   };
-
   // 渲染单条参数
   const renderSingleParam = (prop) => {
     const {
@@ -406,12 +418,11 @@ const BottomParamToolbar = ({
       <div
         style={{
           width: "420px",
-          padding: "16px",
           backgroundColor: "#1e1e1e",
           borderRadius: "8px",
           display: "flex",
           flexDirection: "column",
-          gap: "28px",
+          gap: "5px",
         }}
       >
         {propList.map((prop) => renderSingleParam(prop))}
@@ -454,10 +465,16 @@ const BottomParamToolbar = ({
           <Button
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: "transparent",
+              background: "#333333",
               border: "none",
               boxShadow: "none",
+              borderRadius: "999px",
+              padding: "6px 16px",
+              height: "auto",
               fontSize: "18px",
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
             }}
           >
             {/* 读取仓库全局选中模型展示文字 */}
@@ -473,9 +490,17 @@ const BottomParamToolbar = ({
           >
             <Button
               style={{
-                background: "transparent",
+                background: "#333333",
                 border: "none",
                 boxShadow: "none",
+                borderRadius: "999px",
+                padding: "6px 16px",
+                height: "auto",
+                fontSize: "18px",
+                color: "#fff",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
               }}
             >
               {paramSummary.map((item) => (
@@ -501,7 +526,7 @@ const BottomParamToolbar = ({
         )}
       </Space>
       <Space size={16} align="center">
-        <StyleSelect isGlobal />
+        <StyleSelect isGlobal={false} nodeId={activeNodeId} />
         {/* 积分标签 */}
         <span
           style={{

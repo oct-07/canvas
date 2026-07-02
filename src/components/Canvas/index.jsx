@@ -6,7 +6,7 @@ import {
   useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import useCanvasStore, { validateConnection } from "@/store/canvasStore";
 import CanvasHeader from "./CanvasHeader";
@@ -15,6 +15,8 @@ import CustomEdge from "./CustomEdge";
 import { nodeTypes } from "./CustomNode";
 import SideBar from "./SideBar";
 
+import { getCanvasDetail } from "@/api";
+import useStyleStore from "@/store/styleStore";
 import { getNodeScreenPos } from "@/utils/canvasEditor";
 
 const CanvasContent = () => {
@@ -56,6 +58,48 @@ const CanvasContent = () => {
   useEffect(() => {
     loadModelSkuParams({});
   }, [loadModelSkuParams]);
+
+  const setGlobalStyle = useStyleStore((state) => state.setGlobalStyle);
+  const [canvasName, setCanvasName] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const canvasId = params.get("canvas_id");
+    if (!canvasId) return;
+
+    let cancelled = false;
+
+    const loadCanvasDetail = async () => {
+      try {
+        const res = await getCanvasDetail(canvasId);
+        const detail = res?.data ?? res;
+        if (cancelled) return;
+
+        if (detail?.canvas_name != null) {
+          setCanvasName(detail.canvas_name);
+        }
+
+        if (detail?.style_id != null) {
+          setGlobalStyle(detail.style_id);
+        }
+
+        // TODO: canvas_data 回显暂不处理，后续确认节点/连线结构后再实现
+        // if (detail?.canvas_data) {
+        //   const { nodes = [], edges = [] } = detail.canvas_data;
+        //   useCanvasStore.getState().setNodes(nodes);
+        //   useCanvasStore.getState().setEdges(edges);
+        // }
+      } catch (err) {
+        console.error("加载画布详情失败：", err);
+      }
+    };
+
+    loadCanvasDetail();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [setGlobalStyle]);
 
   const handleConnect = useCallback(
     (connection) => {
@@ -353,7 +397,7 @@ const CanvasContent = () => {
       }}
     >
       <SideBar collapsed={!isSidebarOpen} onToggle={toggleSidebar} />
-      <CanvasHeader />
+      <CanvasHeader canvasName={canvasName} />
 
       <div style={flowWrapperStyle}>
         <ReactFlow

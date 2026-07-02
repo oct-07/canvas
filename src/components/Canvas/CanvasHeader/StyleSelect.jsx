@@ -337,7 +337,9 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
 
   const getDisplayText = () => {
     if (!currentValue) return "请选择风格";
-    return selectedStyleName || currentValue;
+    const matched = styleList.find((item) => item.style_id === currentValue);
+    const matchedName = matched?.name;
+    return selectedStyleName || matchedName || currentValue;
   };
 
   return (

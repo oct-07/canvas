@@ -1,13 +1,17 @@
 import { Layout } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CanvasTitleEdit from "./CanvasTitleEdit";
 import SaveStatusBar from "./SaveStatusBar";
 import StyleSelect from "./StyleSelect";
 
 const { Header } = Layout;
 
-export default function CanvasHeader() {
-  const [currentStyle, setCurrentStyle] = useState("shadow");
+export default function CanvasHeader({ canvasName }) {
+  const [name, setName] = useState(canvasName || "");
+
+  useEffect(() => {
+    setName(canvasName || "");
+  }, [canvasName]);
 
   return (
     <Header
@@ -19,14 +23,11 @@ export default function CanvasHeader() {
         height: 56,
       }}
     >
-      {/* 左侧画布名称输入 */}
-      <CanvasTitleEdit />
+      <CanvasTitleEdit defaultValue={name} />
 
-      {/* 右侧操作栏 */}
       <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
         <SaveStatusBar />
-        {/* 风格弹窗 */}
-        <StyleSelect value={currentStyle} onChange={setCurrentStyle} />
+        <StyleSelect />
       </div>
     </Header>
   );

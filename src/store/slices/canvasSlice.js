@@ -8,9 +8,11 @@
  */
 export const canvasInitialState = {
   canvasId: null,
-  canvasName: '未命名画布',
+  canvasName: "未命名画布",
+  // 新增全局风格字段
+  globalStyle: "",
   viewport: { x: 0, y: 0, zoom: 1 },
-}
+};
 
 /**
  * 创建画布 Slice
@@ -28,12 +30,29 @@ export const createCanvasSlice = (getStore, setStore) => ({
   /**
    * 画布名称
    */
-  canvasName: '未命名画布',
+  canvasName: "未命名画布",
   setCanvasName: (name) => setStore({ canvasName: name }),
+
+  /**
+   * 全局风格标识
+   */
+  globalStyle: "",
+  setGlobalStyle: (styleVal) => setStore({ globalStyle: styleVal }),
+
+  /**
+   * 批量更新画布基础元信息（ID/名称/风格）
+   * @param {Object} meta - { canvasId, canvasName, globalStyle }
+   */
+  setCanvasMeta: (meta) =>
+    setStore({
+      canvasId: meta.canvasId,
+      canvasName: meta.canvasName,
+      globalStyle: meta.globalStyle,
+    }),
 
   /**
    * 画布视口
    */
   viewport: { x: 0, y: 0, zoom: 1 },
   setViewport: (viewport) => setStore({ viewport }),
-})
+});

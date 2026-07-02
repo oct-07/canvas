@@ -6,9 +6,9 @@ import BottomParamToolbar from "./BottomParamToolbar";
 import PromptInputArea from "./PromptInputArea";
 import TopActionBar from "./TopActionBar";
 
+import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { ArrowsAltOutlined, ShrinkOutlined } from "@ant-design/icons";
 import { Button } from "antd";
-import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 
 const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
@@ -61,7 +61,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
       transform: "translateX(-50%)",
       zIndex: 9999,
       borderRadius: 12,
-      background: "#141414",
+      background: "#262626",
       border: "1px solid #303030",
       boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
       padding: 20,
@@ -79,7 +79,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
         transform: "translateX(-50%)", // 水平居中800px宽面板
         width: "800px",
         height: "600px",
-        borderRadius: 0,
+        borderRadius: "10px",
       };
     }
 
@@ -90,21 +90,6 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
       height: 400,
     };
   }, [visible, isFullScreen]);
-
-  // 上传参考图处理
-  const handleUploadRefImage = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (ev) => setImageUrl(ev.target.result);
-      reader.readAsDataURL(file);
-    };
-    input.click();
-  };
 
   // 提交生成
   const handleSend = () => {
@@ -213,12 +198,11 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
           />
         )}
 
-        {/* 1. 顶部按钮栏 */}
+        {/*  顶部按钮栏 */}
         <TopActionBar
           styleValue={styleValue}
           onChangeStyle={setStyleValue}
           onOpenMark={() => console.log("打开标记面板")}
-          onUploadRefImage={handleUploadRefImage}
         />
 
         <div
@@ -231,7 +215,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
           <PromptInputArea html={prompt} onChangeHtml={setPrompt} />
         </div>
 
-        {/* 3. 底部全部参数工具栏 */}
+        {/* 底部全部参数工具栏 */}
         <BottomParamToolbar
           model={model}
           onChangeModel={setModel}

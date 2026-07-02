@@ -1,3 +1,4 @@
+import { useCanvasStore } from "@/store/canvasStore.js";
 import { Layout } from "antd";
 import { useEffect, useState } from "react";
 import CanvasTitleEdit from "./CanvasTitleEdit";
@@ -8,6 +9,9 @@ const { Header } = Layout;
 
 export default function CanvasHeader({ canvasName }) {
   const [name, setName] = useState(canvasName || "");
+  // 只拿风格保存、保存状态、当前风格值
+  const { saveCanvasStyle, saveLoading, saveTip, globalStyle } =
+    useCanvasStore();
 
   useEffect(() => {
     setName(canvasName || "");
@@ -26,8 +30,15 @@ export default function CanvasHeader({ canvasName }) {
       <CanvasTitleEdit defaultValue={name} />
 
       <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-        <SaveStatusBar />
-        <StyleSelect />
+        <SaveStatusBar loading={saveLoading} tip={saveTip} />
+
+        <StyleSelect
+          isGlobal={true}
+          onChange={(styleId) => {
+            // 全局画布风格，单独调用保存接口
+            if (styleId) saveCanvasStyle(styleId);
+          }}
+        />
       </div>
     </Header>
   );

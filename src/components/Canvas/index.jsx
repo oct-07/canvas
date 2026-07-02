@@ -65,29 +65,36 @@ const CanvasContent = () => {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const canvasId = params.get("canvas_id");
+    // 没有画布ID直接退出
     if (!canvasId) return;
 
     let cancelled = false;
+    // 获取store全部方法
+    const canvasStore = useCanvasStore.getState();
 
     const loadCanvasDetail = async () => {
       try {
-        const res = await getCanvasDetail(canvasId);
+        const res = await getCanvasDetail({ canvas_id: canvasId });
         const detail = res?.data ?? res;
         if (cancelled) return;
 
-        if (detail?.canvas_name != null) {
-          setCanvasName(detail.canvas_name);
-        }
+        // 把url解析出来的canvasId存入仓库
+        canvasStore.setCanvasId(canvasId);
 
+        // 回显名称
+        if (detail?.canvas_name != null) {
+          canvasStore.setCanvasName(detail.canvas_name);
+        }
+        // 回显全局风格
         if (detail?.style_id != null) {
-          setGlobalStyle(detail.style_id);
+          canvasStore.setGlobalStyle(detail.style_id);
         }
 
         // TODO: canvas_data 回显暂不处理，后续确认节点/连线结构后再实现
         // if (detail?.canvas_data) {
         //   const { nodes = [], edges = [] } = detail.canvas_data;
-        //   useCanvasStore.getState().setNodes(nodes);
-        //   useCanvasStore.getState().setEdges(edges);
+        //   canvasStore.setNodes(nodes);
+        //   canvasStore.setEdges(edges);
         // }
       } catch (err) {
         console.error("加载画布详情失败：", err);
@@ -100,7 +107,6 @@ const CanvasContent = () => {
       cancelled = true;
     };
   }, [setGlobalStyle]);
-
   const handleConnect = useCallback(
     (connection) => {
       const newEdge = {

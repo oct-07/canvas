@@ -451,7 +451,15 @@ const BottomParamToolbar = ({
           trigger={["click"]}
           getPopupContainer={() => document.body}
         >
-          <Button onClick={(e) => e.stopPropagation()}>
+          <Button
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "transparent",
+              border: "none",
+              boxShadow: "none",
+              fontSize: "18px",
+            }}
+          >
             {/* 读取仓库全局选中模型展示文字 */}
             {currentSelectModel?.model_title || "请选择模型"}
           </Button>
@@ -463,7 +471,13 @@ const BottomParamToolbar = ({
             placement="bottom"
             content={renderParamPanel()}
           >
-            <Button>
+            <Button
+              style={{
+                background: "transparent",
+                border: "none",
+                boxShadow: "none",
+              }}
+            >
               {paramSummary.map((item) => (
                 <span
                   key={item.key}
@@ -472,9 +486,9 @@ const BottomParamToolbar = ({
                     padding: "0 4px",
                     height: "20px",
                     lineHeight: "20px",
-                    fontSize: "12px",
+                    fontSize: "18px",
                     borderRadius: "4px",
-                    background: "#333",
+                    background: "transparent",
                     color: "#fff",
                     marginRight: "4px",
                   }}
@@ -504,8 +518,8 @@ const BottomParamToolbar = ({
           onClick={onSubmit}
           icon={<ArrowUpOutlined />}
           style={{
-            background: "#242424",
-            borderColor: "#242424",
+            background: "#2c2c2c",
+            borderColor: "#2c2c2c",
             color: "#fff",
           }}
         />

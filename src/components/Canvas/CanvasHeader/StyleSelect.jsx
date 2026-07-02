@@ -252,7 +252,11 @@ function StyleDropdownPanel({
 }
 
 // 主导出组件
-export default function StyleSelect({ isGlobal = false, nodeId = null }) {
+export default function StyleSelect({
+  isGlobal = false,
+  nodeId = null,
+  onChange,
+}) {
   const [addForm] = Form.useForm();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -283,9 +287,11 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
       } else {
         setNodeStyle(nodeId, styleId);
       }
+      // 新增：把选中的风格ID抛给上层父组件
+      onChange?.(styleId);
       setDropdownOpen(false);
     },
-    [isGlobal, nodeId, setGlobalStyle, setNodeStyle],
+    [isGlobal, nodeId, setGlobalStyle, setNodeStyle, onChange],
   );
 
   const handleClear = useCallback(() => {
@@ -295,7 +301,9 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
     } else {
       setNodeStyle(nodeId, null);
     }
-  }, [isGlobal, nodeId, setGlobalStyle, setNodeStyle]);
+    // 清空时也通知上层
+    onChange?.(null);
+  }, [isGlobal, nodeId, setGlobalStyle, setNodeStyle, onChange]);
 
   const openAddModal = () => {
     isAddingModalOpen.current = true;

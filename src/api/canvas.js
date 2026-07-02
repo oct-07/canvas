@@ -3,8 +3,8 @@ import { get, post } from "@/utils/request.js";
 /**
  * 获取画布详情
  */
-export const getCanvasDetail = (id) => {
-  return get("/index/canvas/detail", { id });
+export const getCanvasDetail = (params) => {
+  return get("/index/canvas/detail", params);
 };
 
 /**

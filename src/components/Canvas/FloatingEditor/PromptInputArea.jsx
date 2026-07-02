@@ -260,7 +260,6 @@ const PromptInputArea = ({
     [atMentionVisible, updateAtAnchorPosition],
   );
 
-  // 修复：querySelector 拼接哈希类名
   useEffect(() => {
     const globalClick = (e) => {
       const wrap = wrapRef.current;
@@ -288,7 +287,6 @@ const PromptInputArea = ({
   const filterAssets = assetList;
 
   return (
-    // JSX静态class全部替换styles
     <div ref={wrapRef} className={styles.promptEditorWrap}>
       <div
         ref={editorRef}

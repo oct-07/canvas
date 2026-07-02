@@ -1,0 +1,22 @@
+/* antd输入框 样式修改*/
+.ant-input {
+  border: none;
+  background-color: #2c2c2c;
+  font-size: 16px;
+}
+.ant-input:focus {
+  border: none;
+  box-shadow: none;
+}
+
+/* 文本与输入框样式修改 */
+.ant-input-textarea textarea {
+  border: none ;
+  background-color:#2c2c2c;
+  font-size: 16px;
+}
+
+.ant-input-textarea textarea:focus {
+  box-shadow: none ;
+  border: none;
+}

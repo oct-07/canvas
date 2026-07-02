@@ -424,7 +424,7 @@ const BottomParamToolbar = ({
           </Popover>
         )}
       </Space>
-      <StyleSelect />
+      <StyleSelect isGlobal />
       <Button
         type="primary"
         shape="circle"

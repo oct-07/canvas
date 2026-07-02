@@ -9,8 +9,8 @@ export const getStylePresetList = () => {
   return request.get('/index/project/index/getStylePresetList')
 }
 //添加风格
-export const addStyle = () => {
-  return request.post('/index/project/style/add')
+export const addStyle = (data) => {
+  return request.post('/index/project/style/add', data)
 }
 
 /**
@@ -22,5 +22,6 @@ export const createCanvas = (data) => {
 
 export default {
   getStylePresetList,
+  addStyle,
   createCanvas
-}
+};

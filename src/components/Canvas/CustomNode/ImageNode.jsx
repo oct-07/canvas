@@ -1,4 +1,5 @@
 import useCanvasStore from "@/store/canvasStore";
+import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import { PictureOutlined } from "@ant-design/icons";
 import { Handle, Position } from "@xyflow/react";
 import { memo, useCallback, useMemo } from "react";
@@ -185,6 +186,16 @@ const ImageNode = memo(({ id, data, selected }) => {
             }}
             onClose={() => hideActiveEditor(id)}
           />
+          <div
+            style={{
+              marginTop: 8,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
+          >
+            <StyleSelect isGlobal={false} nodeId={id} />
+          </div>
         </div>
       )}
     </div>

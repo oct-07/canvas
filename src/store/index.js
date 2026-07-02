@@ -2,6 +2,7 @@
  * Store 统一导出
  */
 export { default as useCanvasStore } from './canvasStore'
+export { default as useStyleStore } from './styleStore'
 
 // 导出验证函数
 export { validateConnection, getNodePortInfo } from './canvasStore'

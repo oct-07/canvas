@@ -1,4 +1,5 @@
 import useCanvasStore from "@/store/canvasStore";
+import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { Handle, Position } from "@xyflow/react";
 import { memo, useMemo } from "react";
@@ -216,6 +217,16 @@ const VideoNode = memo(({ id, data, selected }) => {
             }}
             onClose={() => hideActiveEditor(id)}
           />
+          <div
+            style={{
+              marginTop: 8,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
+          >
+            <StyleSelect isGlobal={false} nodeId={id} />
+          </div>
         </div>
       )}
     </div>

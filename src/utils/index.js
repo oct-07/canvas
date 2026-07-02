@@ -4,3 +4,4 @@
 export * from './timeFormat'
 export * from './thumbnail'
 export * from './common'
+export * from './styleUtils'

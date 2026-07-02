@@ -1,11 +1,9 @@
 import { message } from "antd";
 import axios from "axios";
 
-// 创建 axios 实例
-/**
- * 创建 axios 实例，配置请求/响应拦截器
- * 自动添加 token、处理错误、标准化响应格式
- */
+// 全局鉴权失效标记
+let isTokenInvalid = false;
+
 const createAxiosInstance = (options = {}) => {
   const instance = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || "/api",
@@ -20,8 +18,15 @@ const createAxiosInstance = (options = {}) => {
   // 请求拦截器
   instance.interceptors.request.use(
     (config) => {
-      const fixedToken = "c43e1641-cc81-4d1a-80db-f423462522af";
+      // 全局标记已失效，直接阻断本次请求，不发送
+      if (isTokenInvalid) {
+        return Promise.reject(new Error("token已失效，禁止发起请求"));
+      }
+
+      // 临时测试固定token
+      const fixedToken = "c8175917-0c19-4d50-9383-8a5360a76c43";
       config.headers.token = fixedToken;
+
       return config;
     },
     (error) => {
@@ -38,21 +43,26 @@ const createAxiosInstance = (options = {}) => {
       }
       if (res.code !== 1) {
         message.error(res.message || "请求失败");
-
         return Promise.reject(res);
       }
       return res.data;
     },
     (error) => {
-      // HTTP 错误处理（原代码完全保留）
+      // HTTP状态码401处理（对应Vue过期code逻辑）
       if (error.response) {
-        const { status, data } = error.response;
+        const { status } = error.response;
+        if (status === 401) {
+          // 只弹一次提示，避免疯狂弹窗
+          if (!isTokenInvalid) {
+            isTokenInvalid = true;
+            message.warning("请登录后操作");
+          }
+          // 直接拒绝，不再走下方通用错误
+          return Promise.reject(error);
+        }
+
+        const { data } = error.response;
         switch (status) {
-          case 401:
-            message.error("未授权，请重新登录");
-            localStorage.removeItem("token");
-            window.location.href = "/login";
-            break;
           case 403:
             message.error("拒绝访问");
             break;
@@ -60,7 +70,7 @@ const createAxiosInstance = (options = {}) => {
             message.error("请求的资源不存在");
             break;
           case 500:
-            message.error("服务器错误");
+            message.error(data?.message || "服务器内部错误");
             break;
           default:
             message.error(data?.message || "网络错误");
@@ -77,7 +87,6 @@ const createAxiosInstance = (options = {}) => {
   return instance;
 };
 
-// 默认导出的请求实例
 const request = createAxiosInstance();
 
 export const get = (url, params = {}, config = {}) => {
@@ -86,6 +95,11 @@ export const get = (url, params = {}, config = {}) => {
 
 export const post = (url, data = {}, config = {}) => {
   return request.post(url, data, config);
+};
+
+// 重置鉴权锁（登录成功后调用，恢复接口请求）
+export const resetTokenValid = () => {
+  isTokenInvalid = false;
 };
 
 export default request;

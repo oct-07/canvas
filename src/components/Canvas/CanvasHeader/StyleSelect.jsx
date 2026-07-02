@@ -1,7 +1,8 @@
 import { addStyle } from "@/api";
+import CommonUpload from "@/components/Common/CommonUpload";
 import useStyleStore from "@/store/styleStore";
 import { DownOutlined, PlusOutlined } from "@ant-design/icons";
-import { Button, Dropdown, Form, Input, Modal, Spin, Upload } from "antd";
+import { Button, Dropdown, Form, Input, Modal, Spin } from "antd";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import styles from "./StyleSelect.module.css";
@@ -39,7 +40,7 @@ function AddStyleModal({ open, onClose, onAddSuccess, form }) {
       const submitData = {
         name: values.name,
         desc: values.desc,
-        url: imgUrl,
+        image: imgUrl,
       };
       await onAddSuccess(submitData);
       form.resetFields();
@@ -106,33 +107,42 @@ function AddStyleModal({ open, onClose, onAddSuccess, form }) {
             rules={[{ required: true, message: "请上传图片" }]}
           >
             <div className={styles.uploadBox}>
-              <Upload
-                listType="text"
-                maxCount={1}
-                beforeUpload={beforeUpload}
-                fileList={
-                  imgUrl ? [{ url: imgUrl, uid: "-1", name: "image" }] : []
-                }
-                onRemove={() => setImgUrl("")}
-              >
-                {!imgUrl && (
+              {!imgUrl ? (
+                <CommonUpload
+                  mode="cover"
+                  drag={true}
+                  value={imgUrl}
+                  onChange={(url) => {
+                    setImgUrl(url);
+                    form.setFieldsValue({ image: url });
+                  }}
+                >
                   <div className={styles.uploadInner}>
                     <PlusOutlined />
                     <div className={styles.uploadTip}>图片上传</div>
                   </div>
-                )}
-              </Upload>
-              {imgUrl && (
-                <img
-                  src={imgUrl}
-                  className={styles.uploadPreviewImg}
-                  alt="预览图"
-                />
-              )}
-              {uploadLoading && (
-                <div className={styles.uploadLoadingMask}>
-                  <Spin size="small" />
-                </div>
+                </CommonUpload>
+              ) : (
+                <CommonUpload
+                  mode="cover"
+                  drag={true}
+                  value={imgUrl}
+                  onChange={(url) => {
+                    setImgUrl(url);
+                    form.setFieldsValue({ image: url });
+                  }}
+                >
+                  <img
+                    src={imgUrl}
+                    className={styles.uploadPreviewImg}
+                    alt="预览图"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                    }}
+                  />
+                </CommonUpload>
               )}
             </div>
           </Form.Item>
@@ -196,7 +206,7 @@ function StyleDropdownPanel({
       <div className={styles.cardScrollBox}>
         {styleLoading && (
           <div className={styles.loadingMask}>
-            <Spin tip="加载中..." />
+            <Spin description="加载中" />
           </div>
         )}
 

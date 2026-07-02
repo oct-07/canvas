@@ -33,17 +33,18 @@ const createAxiosInstance = (options = {}) => {
   instance.interceptors.response.use(
     (response) => {
       const res = response.data;
-      // 后端规范：code=0 代表业务成功，code=1 代表业务失败
+      if (typeof res.code === "object" && res.msg === "上传成功") {
+        return res;
+      }
       if (res.code !== 1) {
         message.error(res.message || "请求失败");
-        // 抛出完整后端返回体，方便业务捕获错误信息
+
         return Promise.reject(res);
       }
-      // 成功直接返回后端data字段（真实业务数据）
       return res.data;
     },
     (error) => {
-      // HTTP 错误处理
+      // HTTP 错误处理（原代码完全保留）
       if (error.response) {
         const { status, data } = error.response;
         switch (status) {

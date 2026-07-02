@@ -1,9 +1,13 @@
 import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import useCanvasStore from "@/store/canvasStore";
 import { getParamChineseName } from "@/utils/paramsMap.js";
-import { ArrowUpOutlined } from "@ant-design/icons";
+import {
+  ArrowUpOutlined,
+  CloseCircleOutlined,
+  NotificationOutlined,
+} from "@ant-design/icons";
 import { Button, Dropdown, Popover, Radio, Space, Switch } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // 比例数据源：固定 key、展示文案、宽高比值
 // 底层公式：height = width ÷ (w / h)
@@ -44,17 +48,26 @@ const BottomParamToolbar = ({
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
   const updateNodeEditorData = useCanvasStore(
-    (state) => state.updateNodeEditorData,
+    (state) => state.setNodeEditorData,
   );
 
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
   const paramValues = editor?.data || {};
 
-  // 比例选中状态
-  const [currentRatio, setCurrentRatio] = useState("auto");
+  // 比例选中状态：优先从已保存参数里恢复
+  const [currentRatio, setCurrentRatio] = useState(
+    paramValues.aspect_ratio || "auto",
+  );
 
   //  参数列表
   const propList = currentSelectModel?.prop_list || [];
+
+  // 同步外部 paramValues 变化到比例状态
+  useEffect(() => {
+    if (paramValues?.aspect_ratio !== undefined) {
+      setCurrentRatio(paramValues.aspect_ratio);
+    }
+  }, [paramValues?.aspect_ratio]);
 
   // 参数修改回调
   const handleParamChange = (propKey, value) => {
@@ -65,6 +78,62 @@ const BottomParamToolbar = ({
     };
     updateNodeEditorData(activeNodeId, newEditorData);
   };
+
+  // 生成参数摘要：每个参数用 span 展示
+  const getParamSummary = () => {
+    if (!propList.length) {
+      return [{ label: "参数设置", key: "placeholder" }];
+    }
+
+    return propList
+      .map((prop) => {
+        const currentVal = paramValues[prop.prop_str];
+        if (
+          currentVal === undefined ||
+          currentVal === null ||
+          currentVal === ""
+        ) {
+          return null;
+        }
+
+        let label = currentVal;
+        if (prop.prop_values_list?.length) {
+          const matched = prop.prop_values_list.find(
+            (item) =>
+              item.prop_value_id === currentVal ||
+              item.prop_value_name === currentVal,
+          );
+          if (matched) {
+            label = matched.prop_value_name;
+          }
+        }
+
+        const title = getParamChineseName(prop.prop_str, prop.prop_name);
+
+        // 音频开关类型，返回图标标识
+        if (prop.prop_viewtype === 4) {
+          return {
+            key: prop.prop_str,
+            isAudioIcon: true,
+            iconNode: Boolean(currentVal) ? (
+              <NotificationOutlined />
+            ) : (
+              <CloseCircleOutlined />
+            ),
+          };
+        }
+
+        // 普通文字参数
+        return {
+          label: `${title}: ${label}`,
+          key: prop.prop_str,
+          isAudioIcon: false,
+        };
+      })
+      .filter(Boolean);
+  };
+
+  const paramSummary = getParamSummary();
 
   // 预览小方框样式
   // 公式：height = 20px ÷ (宽比值 / 高比值)
@@ -152,7 +221,10 @@ const BottomParamToolbar = ({
                 <div
                   key={opt.value}
                   style={getButtonStyle(isSelected)}
-                  onClick={() => setCurrentRatio(opt.key)}
+                  onClick={() => {
+                    setCurrentRatio(opt.key);
+                    handleParamChange("aspect_ratio", opt.key);
+                  }}
                 >
                   {/* 比例预览小图标：宽度固定 20px，高度由 aspect-ratio 自动计算 */}
                   <div style={getPreviewBoxStyle(opt.ratio)} />
@@ -290,7 +362,26 @@ const BottomParamToolbar = ({
             placement="bottom"
             content={renderParamPanel()}
           >
-            <Button>参数设置</Button>
+            <Button>
+              {paramSummary.map((item) => (
+                <span
+                  key={item.key}
+                  style={{
+                    display: "inline-block",
+                    padding: "0 4px",
+                    height: "20px",
+                    lineHeight: "20px",
+                    fontSize: "12px",
+                    borderRadius: "4px",
+                    background: "#333",
+                    color: "#fff",
+                    marginRight: "4px",
+                  }}
+                >
+                  {item.isAudioIcon ? item.iconNode : item.label}
+                </span>
+              ))}
+            </Button>
           </Popover>
         )}
       </Space>

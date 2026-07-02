@@ -8,8 +8,11 @@ import request from './request'
 export const getStylePresetList = () => {
   return request.get('/index/project/index/getStylePresetList')
 }
-
 //添加风格
+export const addStyle = () => {
+  return request.post('/index/project/style/add')
+}
+
 /**
  * 创建新画布
  */

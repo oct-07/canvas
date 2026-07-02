@@ -3,9 +3,23 @@ import { DownOutlined, PlusOutlined } from "@ant-design/icons";
 import { Button, Card, Dropdown, Form, Input, Modal, Spin, Upload } from "antd";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// tab数字与key映射 接口传数字1/2/3/4
+const tabNumToKeyMap = {
+  1: "real",
+  2: "2d",
+  3: "3d",
+  4: "custom",
+};
+// key转回数字，新增风格提交接口用
+const keyToTabNumMap = {
+  real: 1,
+  "2d": 2,
+  "3d": 3,
+  custom: 4,
+};
+
 // 添加风格弹窗
-function AddStyleModal({ open, onClose, onAddSuccess }) {
-  const [form] = Form.useForm();
+function AddStyleModal({ open, onClose, onAddSuccess, form }) {
   const [imgUrl, setImgUrl] = useState("");
   const [uploadLoading, setUploadLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -25,7 +39,13 @@ function AddStyleModal({ open, onClose, onAddSuccess }) {
     try {
       const values = await form.validateFields();
       setSubmitting(true);
-      await onAddSuccess({ ...values, cover: imgUrl });
+      // 新增默认归类到自定义风格(4)，如需让用户选择tab可新增FormSelect
+      const submitData = {
+        ...values,
+        cover: imgUrl,
+        type: keyToTabNumMap.custom,
+      };
+      await onAddSuccess(submitData);
       form.resetFields();
       setImgUrl("");
       setSubmitting(false);
@@ -37,17 +57,19 @@ function AddStyleModal({ open, onClose, onAddSuccess }) {
   };
 
   useEffect(() => {
-    if (!open) {
+    // 打开弹窗时重置表单
+    if (open) {
       form.resetFields();
       setImgUrl("");
     }
+    // 关闭时只清图片，不操作form实例
   }, [open, form]);
 
   return (
     <Modal
       open={open}
       title="添加风格"
-      destroyOnClose
+      destroyOnHidden
       width={620}
       zIndex={99999}
       mask={{ closable: true }}
@@ -120,23 +142,29 @@ function StyleDropdownPanel({
   openAddModal,
   styleList,
   styleLoading,
+  fetchStyleByType,
 }) {
   const [activeTab, setActiveTab] = useState("all");
 
   // 固定分类标签
   const tabItems = [
-    { key: "all", label: "全部" },
-    { key: "real", label: "真人" },
-    { key: "2d", label: "2D" },
-    { key: "3d", label: "3D" },
-    { key: "custom", label: "自定义风格" },
+    { key: "all", label: "全部", type: null },
+    { key: "real", label: "真人", type: 1 },
+    { key: "2d", label: "2D", type: 2 },
+    { key: "3d", label: "3D", type: 3 },
+    { key: "custom", label: "自定义风格", type: 4 },
   ];
 
-  // 根据 tab 过滤风格
-  const filterStyle = styleList.filter((item) => {
-    if (activeTab === "all") return true;
-    return item.tab === activeTab;
-  });
+  // 切换分类标签时按 type 请求后端
+  const handleTabChange = (tab) => {
+    setActiveTab(tab.key);
+    fetchStyleByType(tab.type);
+  };
+
+  // 组件挂载时默认请求全部
+  useEffect(() => {
+    fetchStyleByType(null);
+  }, [fetchStyleByType]);
 
   const selectCard = (item) => {
     onChange(item.id);
@@ -172,7 +200,7 @@ function StyleDropdownPanel({
           return (
             <div
               key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
+              onClick={() => handleTabChange(tab)}
               style={{
                 padding: "6px 16px",
                 borderRadius: 9999,
@@ -247,7 +275,7 @@ function StyleDropdownPanel({
             </Card>
           )}
 
-          {filterStyle.map((item) => (
+          {styleList.map((item) => (
             <Card
               key={item.id}
               hoverable
@@ -257,9 +285,9 @@ function StyleDropdownPanel({
                 border: selectVal === item.id ? "2px solid #177ddc" : undefined,
               }}
               cover={
-                item.img || item.cover ? (
+                item.cover || item.img ? (
                   <img
-                    src={item.image}
+                    src={item.cover || item.img}
                     alt={item.name}
                     style={{
                       height: 80,
@@ -295,7 +323,7 @@ function StyleDropdownPanel({
           ))}
 
           {/* 非自定义 Tab：显示添加卡片入口 */}
-          {activeTab !== "custom" && filterStyle.length > 0 && (
+          {activeTab !== "custom" && styleList.length > 0 && (
             <Card
               hoverable
               variant="outlined"
@@ -318,7 +346,7 @@ function StyleDropdownPanel({
           )}
         </div>
 
-        {!styleLoading && filterStyle.length === 0 && (
+        {!styleLoading && styleList.length === 0 && (
           <div
             style={{
               textAlign: "center",
@@ -336,6 +364,7 @@ function StyleDropdownPanel({
 
 // 主导出组件
 export default function StyleSelect({ isGlobal = false, nodeId = null }) {
+  const [addForm] = Form.useForm();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const isAddingModalOpen = useRef(false);
@@ -347,15 +376,8 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
   const nodeStyleMap = useStyleStore((state) => state.nodeStyleMap);
   const setGlobalStyle = useStyleStore((state) => state.setGlobalStyle);
   const setNodeStyle = useStyleStore((state) => state.setNodeStyle);
-  const fetchStyleList = useStyleStore((state) => state.fetchStyleList);
+  const fetchStyleByType = useStyleStore((state) => state.fetchStyleByType);
   const refreshStyleList = useStyleStore((state) => state.refreshStyleList);
-
-  // 初始化加载风格列表
-  useEffect(() => {
-    if (styleList.length === 0) {
-      fetchStyleList();
-    }
-  }, [fetchStyleList, styleList.length]);
 
   // 当前选中值：全局场景用 globalStyle，节点场景用 nodeStyleMap[nodeId]
   const currentValue = isGlobal ? globalStyle : nodeStyleMap[nodeId];
@@ -436,6 +458,7 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
             openAddModal={openAddModal}
             styleList={styleList}
             styleLoading={styleLoading}
+            fetchStyleByType={fetchStyleByType}
           />
         )}
       >
@@ -482,6 +505,7 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
         open={addModalOpen}
         onClose={closeAddModal}
         onAddSuccess={handleAddSuccess}
+        form={addForm}
       />
     </>
   );

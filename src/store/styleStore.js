@@ -30,6 +30,22 @@ const useStyleStore = create((set, get) => ({
   },
 
   /**
+   * 根据 type 调用接口拉取风格列表
+   * @param {number|null} type - 分类类型：1=真人，2=2D，3=3D，4=自定义，不传/null=全部
+   */
+  fetchStyleByType: async (type) => {
+    set({ styleLoading: true });
+    try {
+      const res = await getStylePresetList(type);
+      const list = Array.isArray(res) ? res : res?.data || [];
+      set({ styleList: list, styleLoading: false });
+    } catch (err) {
+      console.error("按分类获取风格列表失败：", err);
+      set({ styleLoading: false });
+    }
+  },
+
+  /**
    * 设置全局风格，同时清空 nodeStyleMap
    */
   setGlobalStyle: (styleId) => {

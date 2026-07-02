@@ -74,14 +74,6 @@ const useStyleStore = create((set, get) => ({
     }
     return globalStyle;
   },
-
-  /**
-   * 新增风格后调用，重新拉取全部列表
-   */
-  refreshStyleList: async () => {
-    // 不传参数，默认拉取全部
-    await get().fetchStyleList();
-  },
 }));
 
 export default useStyleStore;

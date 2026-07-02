@@ -160,9 +160,9 @@ function StyleDropdownPanel({
   styleList,
   styleLoading,
   fetchStyleList,
+  activeTab,
+  onTabChange,
 }) {
-  const [activeTab, setActiveTab] = useState("all");
-
   const tabItems = [
     { key: "all", label: "全部", type: null },
     { key: "real", label: "真人", type: 1 },
@@ -172,16 +172,12 @@ function StyleDropdownPanel({
   ];
 
   const handleTabChange = (tab) => {
-    setActiveTab(tab.key);
+    onTabChange(tab.key);
     fetchStyleList(tab.type);
   };
 
-  useEffect(() => {
-    fetchStyleList(null);
-  }, [fetchStyleList]);
-
   const selectCard = (item) => {
-    onChange(item.style_id);
+    onChange(item.style_id, item.name);
   };
 
   return (
@@ -260,6 +256,8 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
   const [addForm] = Form.useForm();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("all");
+  const [selectedStyleName, setSelectedStyleName] = useState("");
   const isAddingModalOpen = useRef(false);
 
   const styleList = useStyleStore((state) => state.styleList);
@@ -269,12 +267,17 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
   const setGlobalStyle = useStyleStore((state) => state.setGlobalStyle);
   const setNodeStyle = useStyleStore((state) => state.setNodeStyle);
   const fetchStyleList = useStyleStore((state) => state.fetchStyleList);
-  const refreshStyleList = useStyleStore((state) => state.refreshStyleList);
 
   const currentValue = isGlobal ? globalStyle : nodeStyleMap[nodeId];
 
+  const getTabType = useCallback((tabKey) => {
+    const map = { all: null, real: 1, "2d": 2, "3d": 3, custom: 4 };
+    return map[tabKey] ?? null;
+  }, []);
+
   const handleSelect = useCallback(
-    (styleId) => {
+    (styleId, name) => {
+      setSelectedStyleName(name || "");
       if (isGlobal) {
         setGlobalStyle(styleId);
       } else {
@@ -286,6 +289,7 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
   );
 
   const handleClear = useCallback(() => {
+    setSelectedStyleName("");
     if (isGlobal) {
       setGlobalStyle(null);
     } else {
@@ -295,22 +299,20 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
 
   const openAddModal = () => {
     isAddingModalOpen.current = true;
-    setDropdownOpen(false);
     setAddModalOpen(true);
   };
 
   const closeAddModal = () => {
     setAddModalOpen(false);
-    setTimeout(() => {
-      isAddingModalOpen.current = false;
-    }, 150);
+    isAddingModalOpen.current = false;
   };
 
   const handleAddSuccess = async (newStyle) => {
     console.log("新增风格：", newStyle);
     try {
       await addStyle(newStyle);
-      await refreshStyleList();
+      await fetchStyleList(4);
+      setActiveTab("custom");
     } catch (err) {
       console.error("添加风格失败：", err);
     }
@@ -319,14 +321,23 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
   const handleDropdownOpenChange = (open) => {
     if (isAddingModalOpen.current) return;
     setDropdownOpen(open);
+
+    if (open) {
+      fetchStyleList(getTabType(activeTab));
+    }
   };
+
+  useEffect(() => {
+    fetchStyleList(null);
+  }, []);
+
+  useEffect(() => {
+    fetchStyleList(getTabType(activeTab));
+  }, [activeTab, fetchStyleList, getTabType]);
 
   const getDisplayText = () => {
     if (!currentValue) return "请选择风格";
-    const found = styleList.find(
-      (item) => String(item.style_id) === String(currentValue),
-    );
-    return found?.name || currentValue;
+    return selectedStyleName || currentValue;
   };
 
   return (
@@ -344,6 +355,8 @@ export default function StyleSelect({ isGlobal = false, nodeId = null }) {
             styleList={styleList}
             styleLoading={styleLoading}
             fetchStyleList={fetchStyleList}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
           />
         )}
       >

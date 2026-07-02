@@ -1,4 +1,4 @@
-import { get, post } from "./request";
+import { get, post } from "@/utils/request.js";
 
 //风格列表
 /**

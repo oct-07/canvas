@@ -1,4 +1,4 @@
-import { post } from "./request";
+import { post } from "@/utils/request.js";
 
 //生成图片跟视频
 /**

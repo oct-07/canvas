@@ -1,11 +1,14 @@
 import useCanvasStore from "@/store/canvasStore";
-import { getNodeStyleFromAspect } from "@/utils/aspectRatioMap";
+import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { Position } from "@xyflow/react";
-import { memo, useMemo } from "react";
-import FloatingEditor from "../FloatingEditor";
-import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
+import { memo, useEffect, useMemo } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
+import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
+import FloatingEditor from "../FloatingEditor";
+
+const VIDEO_NODE_WIDTH = 240;
+const DEFAULT_ASPECT_RATIO = "227";
 
 /**
  * 视频节点组件 - 显示视频缩略图的节点
@@ -25,7 +28,7 @@ const VideoNode = memo(({ id, data, selected }) => {
 
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
-  const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
+  const editor = nodeEditors[id];
   const isThisEditorOpen = activeNodeId === id && !!editor?.visible;
 
   const handleNodeClick = (e) => {
@@ -62,12 +65,24 @@ const VideoNode = memo(({ id, data, selected }) => {
   };
 
   const nodeData = editor?.data ?? data ?? {};
-  const aspectRatio = nodeData.aspect_ratio || "272";
+  const aspectRatio = nodeData.aspect_ratio || DEFAULT_ASPECT_RATIO;
 
   const previewStyle = useMemo(() => {
-    const { width, height } = getNodeStyleFromAspect(aspectRatio, 240);
-    return { width, height };
+    const size = getAspectRatioSize(aspectRatio);
+    const height = Math.round((VIDEO_NODE_WIDTH * size.height) / size.width);
+    return {
+      width: VIDEO_NODE_WIDTH,
+      height,
+      aspectRatio: `${size.width} / ${size.height}`,
+    };
   }, [aspectRatio]);
+
+  // 同步节点尺寸到 ReactFlow store，使画布盒子跟随比例变化
+  useEffect(() => {
+    useCanvasStore
+      .getState()
+      .syncNodeDimensions(id, previewStyle.width, previewStyle.height);
+  }, [id, previewStyle.width, previewStyle.height]);
 
   return (
     <div
@@ -75,6 +90,7 @@ const VideoNode = memo(({ id, data, selected }) => {
       style={{
         position: "relative",
         width: previewStyle.width,
+        aspectRatio: previewStyle.aspectRatio,
         background: "#262626",
         borderRadius: "12px",
         border: isTarget

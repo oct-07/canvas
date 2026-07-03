@@ -101,7 +101,42 @@
 .aspectRatioBox[data-ratio="1:1"] .aspectRatioInner {
     aspect-ratio: 1 / 1;
 }
+/* 补齐剩余全部比例预览 */
+.aspectRatioBox[data-ratio="3:2"] .aspectRatioInner {
+    aspect-ratio: 3 / 2;
+}
 
+.aspectRatioBox[data-ratio="2:3"] .aspectRatioInner {
+    aspect-ratio: 2 / 3;
+}
+
+.aspectRatioBox[data-ratio="5:4"] .aspectRatioInner {
+    aspect-ratio: 5 / 4;
+}
+
+.aspectRatioBox[data-ratio="4:5"] .aspectRatioInner {
+    aspect-ratio: 4 / 5;
+}
+
+.aspectRatioBox[data-ratio="2:1"] .aspectRatioInner {
+    aspect-ratio: 2 / 1;
+}
+
+.aspectRatioBox[data-ratio="1:2"] .aspectRatioInner {
+    aspect-ratio: 1 / 2;
+}
+
+.aspectRatioBox[data-ratio="9:21"] .aspectRatioInner {
+    aspect-ratio: 9 / 21;
+}
+
+.aspectRatioBox[data-ratio="3:1"] .aspectRatioInner {
+    aspect-ratio: 3 / 1;
+}
+
+.aspectRatioBox[data-ratio="1:3"] .aspectRatioInner {
+    aspect-ratio: 1 / 3;
+}
 .aspectRatioBox[data-ratio="自适应"] .aspectRatioInner {
     aspect-ratio: 1 / 1;
     background: repeating-linear-gradient(

@@ -126,12 +126,17 @@ const BottomParamToolbar = ({
         prop.prop_values_list.length > 0
       ) {
         const firstVal = prop.prop_values_list[0];
-        newData[prop.prop_str] = firstVal.prop_value_id;
+        // aspect_ratio 使用稳定的 label 存储，避免后端 prop_value_id 在不同模型下不一致
+        if (prop.prop_str === "aspect_ratio") {
+          newData[prop.prop_str] = firstVal.prop_value_name || firstVal.prop_value_id;
+        } else {
+          newData[prop.prop_str] = firstVal.prop_value_id;
+        }
         console.log(
           "[Init] set",
           prop.prop_str,
           "=",
-          firstVal.prop_value_id,
+          newData[prop.prop_str],
           firstVal.prop_value_name,
         );
       }
@@ -330,7 +335,8 @@ const BottomParamToolbar = ({
                   style={getButtonStyle(isSelected)}
                   onClick={() => {
                     setCurrentRatio(opt.key);
-                    handleParamChange("aspect_ratio", opt.value);
+                    // 保存稳定的 label（如 "16:9"）到 editor.data，避免后端 prop_value_id 在不同模型下不一致导致尺寸不更新
+                    handleParamChange("aspect_ratio", opt.label);
                   }}
                 >
                   {/* 比例预览小图标：宽度固定 20px，高度由 aspect-ratio 自动计算 */}

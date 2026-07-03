@@ -1,11 +1,14 @@
 import useCanvasStore from "@/store/canvasStore";
-import { getNodeStyleFromAspect } from "@/utils/aspectRatioMap";
+import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { PictureOutlined } from "@ant-design/icons";
 import { Position } from "@xyflow/react";
-import { memo, useCallback, useMemo } from "react";
-import FloatingEditor from "../FloatingEditor";
-import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
+import { memo, useCallback, useEffect, useMemo } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
+import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
+import FloatingEditor from "../FloatingEditor";
+
+const IMAGE_NODE_WIDTH = 260;
+const DEFAULT_ASPECT_RATIO = "227";
 
 const ImageNode = memo(({ id, data, selected }) => {
   const { isTarget, tiltX, tiltY, canConnect } = useNodeMagnet(id);
@@ -20,7 +23,7 @@ const ImageNode = memo(({ id, data, selected }) => {
 
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
-  const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
+  const editor = nodeEditors[id];
   const isThisEditorOpen = activeNodeId === id && !!editor?.visible;
 
   const handleNodeClick = useCallback(
@@ -69,12 +72,24 @@ const ImageNode = memo(({ id, data, selected }) => {
   );
 
   const nodeData = editor?.data ?? data ?? {};
-  const aspectRatio = nodeData.aspect_ratio || "272";
+  const aspectRatio = nodeData.aspect_ratio || DEFAULT_ASPECT_RATIO;
 
   const previewStyle = useMemo(() => {
-    const { width, height } = getNodeStyleFromAspect(aspectRatio, 220);
-    return { width, height };
+    const size = getAspectRatioSize(aspectRatio);
+    const height = Math.round((IMAGE_NODE_WIDTH * size.height) / size.width);
+    return {
+      width: IMAGE_NODE_WIDTH,
+      height,
+      aspectRatio: `${size.width} / ${size.height}`,
+    };
   }, [aspectRatio]);
+
+  // 同步节点尺寸到 ReactFlow store，使画布盒子跟随比例变化
+  useEffect(() => {
+    useCanvasStore
+      .getState()
+      .syncNodeDimensions(id, previewStyle.width, previewStyle.height);
+  }, [id, previewStyle.width, previewStyle.height]);
 
   return (
     <div
@@ -82,6 +97,7 @@ const ImageNode = memo(({ id, data, selected }) => {
       style={{
         position: "relative",
         width: previewStyle.width,
+        aspectRatio: previewStyle.aspectRatio, // 新增：原生比例自动控制高度
         background: "#262626",
         borderRadius: 12,
         border: isTarget

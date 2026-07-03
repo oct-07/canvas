@@ -106,7 +106,11 @@ const BottomParamToolbar = ({
     console.log("[Init] firstModel", firstModel);
     if (!firstModel) return;
 
-    const newData = { ...paramValues, model_id: firstModel.id };
+    const newData = {
+      ...paramValues,
+      model_id: firstModel.id,
+      model_frame: firstModel.model_frame,
+    };
     firstModel.prop_list?.forEach((prop) => {
       if (
         Array.isArray(prop.prop_values_list) &&
@@ -439,6 +443,7 @@ const BottomParamToolbar = ({
       const newEditorData = {
         ...editor.data,
         model_id: item.id,
+        model_frame: item.model_frame,
       };
       updateNodeEditorData(activeNodeId, newEditorData);
     },

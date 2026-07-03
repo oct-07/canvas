@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-// 改为CSS Modules导入
 import styles from "./PromptInputArea.module.css";
 
+// 默认素材列表
 const defaultAssetList = [
   {
     type: "img",
@@ -20,301 +20,390 @@ const defaultAssetList = [
 ];
 
 const PromptInputArea = ({
-  prompt,
-  onChangePrompt = () => {},
+  html = "",
+  onChangeHtml = () => {},
   assetList = defaultAssetList,
+  isFullScreen = false,
 }) => {
-  const editorRef = useRef(null);
-  const wrapRef = useRef(null);
-  const lockRef = useRef(false);
+  // DOM容器
+  const editorRef = useRef(null); // 内层富文本contenteditable
+  const wrapRef = useRef(null); // 整体外层定位容器
+  const scrollWrapRef = useRef(null); // 外层滚动容器（真正承载max-height/overflow）
 
-  const [atMentionVisible, setAtMentionVisible] = useState(false);
-  const [atMentionStyle, setAtMentionStyle] = useState({ left: 0, top: 0 });
+  const lockSyncRef = useRef(false); // 双向同步锁，防止循环渲染
+
+  // @素材弹窗状态
+  const [mentionVisible, setMentionVisible] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState({ left: 0, top: 0 });
   const savedRangeRef = useRef(null);
   const replaceTargetRef = useRef(null);
 
-  const closestByClass = useCallback((el, className) => {
-    let node = el;
-    while (node && node.nodeType === 1) {
-      if (node.classList.contains(className)) return node;
-      node = node.parentNode;
-    }
-    return null;
-  }, []);
-
-  const saveSelection = useCallback(() => {
-    const sel = window.getSelection();
-    if (sel.rangeCount) {
-      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
-    }
-  }, []);
-
-  const updateAtAnchorPosition = useCallback(() => {
-    const editor = editorRef.current;
-    const wrap = wrapRef.current;
-    if (!editor || !wrap) return;
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    const wrapRect = wrap.getBoundingClientRect();
-    setAtMentionStyle({
-      left: rect.left - wrapRect.left,
-      top: rect.bottom - wrapRect.top + 8,
-    });
-  }, []);
-
-  const cleanWhitespaceNodes = useCallback((root) => {
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  // ==================== 工具：清理空白文本节点，避免隐形撑高 ====================
+  const cleanEmptyTextNodes = useCallback((rootEl) => {
+    if (!rootEl) return;
+    const walker = document.createTreeWalker(rootEl, NodeFilter.SHOW_TEXT);
     const removeList = [];
     let node;
     while ((node = walker.nextNode())) {
       if (!node.textContent.trim()) removeList.push(node);
     }
-    removeList.forEach((n) => n.parentNode?.removeChild(n));
+    removeList.forEach((n) => n.remove());
   }, []);
 
-  const createAtItem = useCallback(
-    (item) => {
-      const atItem = document.createElement("span");
-      atItem.className = styles.atItem;
-      atItem.contentEditable = "false";
-      atItem.dataset.id = `${item.type}${item.main_id}`;
+  // ==================== 工具：修复光标，兼容TextNode无closest报错 ====================
+  const fixSelectionRange = useCallback(() => {
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return false;
+    const range = sel.getRangeAt(0);
 
-      atItem.onclick = (e) => {
-        e.stopPropagation();
-        replaceTargetRef.current = atItem;
-        const rect = atItem.getBoundingClientRect();
-        const wrapRect = wrapRef.current.getBoundingClientRect();
-        setAtMentionStyle({
-          left: rect.left - wrapRect.left,
-          top: rect.bottom - wrapRect.top + 6,
-        });
-        setAtMentionVisible(true);
-      };
+    // 文本节点向上转元素，避免 .closest 报错
+    let containerEl = range.startContainer;
+    if (containerEl.nodeType === Node.TEXT_NODE)
+      containerEl = containerEl.parentElement;
+    if (!containerEl) return false;
 
-      const imgBox = document.createElement("div");
-      imgBox.className = styles.atImgBox;
-      const img = document.createElement("img");
-      img.className = styles.atImg;
-      img.src = item.image;
-      img.loading = "lazy";
-      img.onerror = () => {
-        img.style.display = "none";
-        const placeholder = document.createElement("div");
-        placeholder.className = styles.atImgPlaceholder;
-        placeholder.innerHTML = "<i>🖼</i>";
-        imgBox.appendChild(placeholder);
-      };
-      imgBox.appendChild(img);
+    const outerShell = containerEl.closest('[contenteditable="false"]');
+    if (!outerShell) return false;
 
-      const textSpan = document.createElement("span");
-      textSpan.className = styles.atText;
-      textSpan.textContent = item.label;
+    const shellRect = outerShell.getBoundingClientRect();
+    const caretRect = range.getBoundingClientRect();
+    const moveBefore = caretRect.left < shellRect.left + shellRect.width / 2;
 
-      atItem.append(imgBox, textSpan);
-      return atItem;
-    },
-    [styles],
-  );
+    if (moveBefore) {
+      range.setStartBefore(outerShell);
+      range.setEndBefore(outerShell);
+    } else {
+      range.setStartAfter(outerShell);
+      range.setEndAfter(outerShell);
+    }
+    range.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    return true;
+  }, []);
 
-  const insertAtItem = useCallback(
+  // 全局监听光标实时修正
+  useEffect(() => {
+    const handler = () => requestAnimationFrame(fixSelectionRange);
+    document.addEventListener("selectionchange", handler);
+    return () => document.removeEventListener("selectionchange", handler);
+  }, [fixSelectionRange]);
+
+  // 缓存光标选区
+  const saveCurrentRange = useCallback(() => {
+    const sel = window.getSelection();
+    if (sel.rangeCount > 0)
+      savedRangeRef.current = sel.getRangeAt(0).cloneRange();
+  }, []);
+
+  // ==================== 弹窗定位：右侧溢出自动左移 ====================
+  const updatePopoverPosition = useCallback(() => {
+    const editor = editorRef.current;
+    const wrap = wrapRef.current;
+    if (!editor || !wrap) return;
+    const sel = window.getSelection();
+    if (!sel.rangeCount) return;
+
+    const range = sel.getRangeAt(0);
+    const caretRect = range.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+    const popoverWidth = 260;
+    let baseLeft = caretRect.left - wrapRect.left;
+    const popoverRight = baseLeft + popoverWidth;
+    const wrapInnerWidth = wrap.clientWidth;
+
+    // 右侧超出容器，弹窗左移
+    if (popoverRight > wrapInnerWidth) baseLeft = baseLeft - popoverWidth;
+    if (baseLeft < 8) baseLeft = 8;
+
+    setPopoverStyle({
+      left: baseLeft,
+      top: caretRect.bottom - wrapRect.top + 8,
+    });
+  }, []);
+
+  // ==================== 创建原子块DOM（外层不可编辑隔离壳，固定单行高度不撑高滚动容器） ====================
+  const createAssetTag = useCallback((item) => {
+    // 外层隔离壳：contenteditable=false，单行高度约束
+    const outerShell = document.createElement("span");
+    outerShell.contentEditable = "false";
+    outerShell.style.display = "inline";
+    outerShell.style.lineHeight = "1.6";
+    outerShell.style.maxHeight = "26px";
+    outerShell.style.overflow = "hidden";
+
+    // 内层视觉卡片
+    const tagEl = document.createElement("span");
+    tagEl.className = styles.assetTag;
+    tagEl.dataset.assetId = `${item.type}-${item.main_id}`;
+    tagEl.style.maxHeight = "26px";
+    tagEl.style.overflow = "hidden";
+
+    // 点击唤起替换弹窗
+    tagEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      replaceTargetRef.current = tagEl;
+      const rect = tagEl.getBoundingClientRect();
+      const wrapRect = wrapRef.current.getBoundingClientRect();
+      setPopoverStyle({
+        left: rect.left - wrapRect.left,
+        top: rect.bottom - wrapRect.top + 6,
+      });
+      setMentionVisible(true);
+    });
+
+    // 缩略图
+    const imgWrap = document.createElement("div");
+    imgWrap.className = styles.tagImgWrap;
+    const img = document.createElement("img");
+    img.className = styles.tagImg;
+    img.src = item.image;
+    img.loading = "lazy";
+    img.onerror = () => (imgWrap.innerHTML = "<span>🖼</span>");
+    imgWrap.appendChild(img);
+
+    // 素材名称
+    const labelText = document.createElement("span");
+    labelText.className = styles.tagLabel;
+    labelText.textContent = item.label;
+
+    tagEl.append(imgWrap, labelText);
+    outerShell.appendChild(tagEl);
+    return outerShell;
+  }, []);
+
+  // ==================== 插入@素材 ====================
+  const insertAssetTag = useCallback(
     (item) => {
       const editor = editorRef.current;
       const sel = window.getSelection();
-      let useRange = null;
+      let targetRange = null;
 
-      if (savedRangeRef.current) {
-        const r = savedRangeRef.current;
-        if (editor.contains(r.startContainer)) {
-          useRange = r;
-        }
-        savedRangeRef.current = null;
-      }
-      if (!useRange && sel.rangeCount) {
-        useRange = sel.getRangeAt(0);
-      }
-
-      const range = useRange || document.createRange();
-      if (useRange) {
-        const textNode = range.startContainer;
-        const offset = range.startOffset;
-        if (textNode.nodeType === Node.TEXT_NODE && offset >= 1) {
-          textNode.textContent =
-            textNode.textContent.slice(0, offset - 1) +
-            textNode.textContent.slice(offset);
-          range.setStart(textNode, offset - 1);
-          range.collapse(true);
-        }
+      if (
+        savedRangeRef.current &&
+        editor.contains(savedRangeRef.current.startContainer)
+      ) {
+        targetRange = savedRangeRef.current;
+      } else if (sel.rangeCount > 0) {
+        targetRange = sel.getRangeAt(0);
       } else {
-        const lastChild = editor.lastChild;
-        if (lastChild) range.setStartAfter(lastChild);
-        else range.selectNodeContents(editor);
-        range.collapse(true);
+        targetRange = document.createRange();
+        targetRange.selectNodeContents(editor);
+        targetRange.collapse(false);
+      }
+
+      // 删除输入的@符号
+      const startNode = targetRange.startContainer;
+      const startOffset = targetRange.startOffset;
+      if (startNode.nodeType === Node.TEXT_NODE && startOffset >= 1) {
+        startNode.textContent =
+          startNode.textContent.slice(0, startOffset - 1) +
+          startNode.textContent.slice(startOffset);
+        targetRange.setStart(startNode, startOffset - 1);
+        targetRange.collapse(true);
       }
 
       sel.removeAllRanges();
-      sel.addRange(range);
+      sel.addRange(targetRange);
+      const tagDom = createAssetTag(item);
+      targetRange.deleteContents();
+      targetRange.insertNode(tagDom);
 
-      const cardDom = createAtItem(item);
-      range.deleteContents();
-      range.insertNode(cardDom);
-      range.setStartAfter(cardDom);
-      range.setEndAfter(cardDom);
+      // 强制光标放在原子块后方
+      targetRange.setStartAfter(tagDom);
+      targetRange.setEndAfter(tagDom);
       sel.removeAllRanges();
-      sel.addRange(range);
+      sel.addRange(targetRange);
 
-      setAtMentionVisible(false);
-      lockRef.current = true;
-      onChangePrompt(editor.innerHTML);
-      setTimeout(() => (lockRef.current = false), 0);
+      // 同步父组件
+      lockSyncRef.current = true;
+      onChangeHtml(editor.innerHTML);
+      setTimeout(() => (lockSyncRef.current = false), 0);
+      setMentionVisible(false);
+      savedRangeRef.current = null;
     },
-    [createAtItem, onChangePrompt],
+    [createAssetTag, onChangeHtml],
   );
 
-  const handleAtSelect = useCallback(
+  // 替换已有原子块
+  const replaceAssetTag = useCallback(
     (item) => {
+      if (!replaceTargetRef.current) return;
       const editor = editorRef.current;
-      if (replaceTargetRef.current) {
-        const oldDom = replaceTargetRef.current;
-        const newDom = createAtItem(item);
-        oldDom.parentNode.insertBefore(newDom, oldDom);
-        oldDom.remove();
-        replaceTargetRef.current = null;
-        lockRef.current = true;
-        onChangePrompt(editor.innerHTML);
-        setTimeout(() => (lockRef.current = false), 0);
-      } else {
-        insertAtItem(item);
-      }
-      setAtMentionVisible(false);
+      const oldInnerTag = replaceTargetRef.current;
+      const oldShell = oldInnerTag.parentElement;
+
+      const newShell = createAssetTag(item);
+      oldShell.parentNode.insertBefore(newShell, oldShell);
+      oldShell.remove();
+      replaceTargetRef.current = null;
+
+      lockSyncRef.current = true;
+      onChangeHtml(editor.innerHTML);
+      setTimeout(() => (lockSyncRef.current = false), 0);
+      setMentionVisible(false);
     },
-    [createAtItem, insertAtItem, onChangePrompt],
+    [createAssetTag, onChangeHtml],
   );
 
-  const handleInput = useCallback(() => {
-    if (lockRef.current) return;
-    const editor = editorRef.current;
-    const html = editor.innerHTML;
-    onChangePrompt(html);
-    if (atMentionVisible) updateAtAnchorPosition();
-  }, [onChangePrompt, atMentionVisible, updateAtAnchorPosition]);
+  // 弹窗素材点击统一入口
+  const handleSelectAsset = (item) => {
+    if (replaceTargetRef.current) replaceAssetTag(item);
+    else insertAssetTag(item);
+  };
 
+  // ==================== 原生事件处理 ====================
+  const handleInput = useCallback(() => {
+    if (lockSyncRef.current) return;
+    const html = editorRef.current.innerHTML;
+    onChangeHtml(html);
+    cleanEmptyTextNodes(editorRef.current);
+    if (mentionVisible) updatePopoverPosition();
+  }, [
+    onChangeHtml,
+    mentionVisible,
+    updatePopoverPosition,
+    cleanEmptyTextNodes,
+  ]);
+
+  // 监听@字符唤起弹窗
   const handleKeyUp = useCallback(
     (e) => {
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
-      const node = range.startContainer;
-      if (node.nodeType !== Node.TEXT_NODE) return;
-      const text = node.textContent;
+      const textNode = range.startContainer;
       const offset = range.startOffset;
-      if (offset < 1) return;
-      if (text[offset - 1] === "@") {
-        saveSelection();
-        updateAtAnchorPosition();
-        setAtMentionVisible(true);
+      if (textNode.nodeType !== Node.TEXT_NODE || offset < 1) return;
+      if (textNode.textContent[offset - 1] === "@") {
+        saveCurrentRange();
+        updatePopoverPosition();
+        setMentionVisible(true);
       }
     },
-    [saveSelection, updateAtAnchorPosition],
+    [saveCurrentRange, updatePopoverPosition],
   );
 
+  // 退格删除整块原子块（修复TextNode closest报错）
   const handleKeyDown = useCallback(
     (e) => {
       if (e.key !== "Backspace") return;
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
-      let node = range.startContainer;
-      if (node.nodeType === Node.TEXT_NODE) node = node.parentNode;
-      const atItem = closestByClass(node, styles.atItem);
-      if (!atItem) return;
-      e.preventDefault();
-      const prev = atItem.previousSibling;
-      atItem.remove();
-      lockRef.current = true;
-      onChangePrompt(editorRef.current.innerHTML);
-      setTimeout(() => (lockRef.current = false), 0);
 
+      let curNode = range.startContainer;
+      if (curNode.nodeType === Node.TEXT_NODE) curNode = curNode.parentElement;
+      if (!curNode) return;
+      const outerShell = curNode.closest('[contenteditable="false"]');
+      if (!outerShell) return;
+
+      e.preventDefault();
+      outerShell.remove();
+      lockSyncRef.current = true;
+      onChangeHtml(editorRef.current.innerHTML);
+      setTimeout(() => (lockSyncRef.current = false), 0);
+
+      // 删除后重置光标
       const newRange = document.createRange();
-      if (prev) {
-        if (prev.nodeType === Node.TEXT_NODE)
-          newRange.setStart(prev, prev.textContent.length);
-        else newRange.setStartAfter(prev);
-      } else {
+      const prevSib = outerShell.previousSibling;
+      if (prevSib) newRange.setStartAfter(prevSib);
+      else {
         newRange.selectNodeContents(editorRef.current);
         newRange.collapse(true);
       }
       sel.removeAllRanges();
       sel.addRange(newRange);
     },
-    [closestByClass, onChangePrompt, styles],
+    [onChangeHtml],
   );
 
-  const handleClick = useCallback(
-    (e) => {
-      if (editorRef.current.contains(e.target) && atMentionVisible) {
-        updateAtAnchorPosition();
-      }
-    },
-    [atMentionVisible, updateAtAnchorPosition],
-  );
+  // 点击输入框刷新弹窗位置
+  const handleEditorClick = useCallback(() => {
+    if (mentionVisible) updatePopoverPosition();
+  }, [mentionVisible, updatePopoverPosition]);
 
+  // 全局空白处关闭弹窗
   useEffect(() => {
-    const globalClick = (e) => {
-      const wrap = wrapRef.current;
-      const popoverClass = `.${styles.atMediaPopover}`;
-      const popover = document.querySelector(popoverClass);
-      if (!wrap.contains(e.target) && popover && !popover.contains(e.target)) {
-        setAtMentionVisible(false);
+    const closePop = (e) => {
+      const popover = document.querySelector(`.${styles.mentionPopover}`);
+      if (wrapRef.current && popover && !wrapRef.current.contains(e.target)) {
+        setMentionVisible(false);
       }
     };
-    window.addEventListener("mousedown", globalClick);
-    return () => window.removeEventListener("mousedown", globalClick);
-  }, [styles]);
+    window.addEventListener("mousedown", closePop);
+    return () => window.removeEventListener("mousedown", closePop);
+  }, []);
 
+  // 拦截粘贴，仅保留纯文本，避免带入外部 HTML 样式（div 块、border 等）
+  const handlePaste = useCallback((e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    document.execCommand("insertText", false, text);
+  }, []);
+
+  // 全屏切换时动态调整编辑器高度
   useEffect(() => {
-    if (lockRef.current) return;
     const editor = editorRef.current;
-    if (!editor) return;
-    if (editor.innerHTML !== prompt) {
-      editor.innerHTML = prompt || "";
-      cleanWhitespaceNodes(editor);
-      editor.focus();
-    }
-  }, [prompt, cleanWhitespaceNodes]);
+    const scrollWrap = scrollWrapRef.current;
+    if (!editor || !scrollWrap) return;
+    const height = isFullScreen ? "400px" : "120px";
+    editor.style.minHeight = height;
+    scrollWrap.style.minHeight = height;
+  }, [isFullScreen]);
 
-  const filterAssets = assetList;
+  // 父组件外部html同步到编辑器
+  useEffect(() => {
+    if (lockSyncRef.current || !editorRef.current) return;
+    const editor = editorRef.current;
+    if (editor.innerHTML !== html) {
+      editor.innerHTML = html || "";
+      cleanEmptyTextNodes(editor);
+    }
+  }, [html, cleanEmptyTextNodes]);
 
   return (
-    <div ref={wrapRef} className={styles.promptEditorWrap}>
+    <div ref={wrapRef} className={styles.editorWrap}>
+      {/* 外层滚动容器：真正控制max-height、overflow，解决contenteditable滚动bug */}
       <div
-        ref={editorRef}
-        className={styles.promptEditor}
-        contentEditable="true"
-        data-placeholder="请输入提示词...输入@引用素材"
-        suppressContentEditableWarning
-        onInput={handleInput}
-        onClick={handleClick}
-        onKeyUp={handleKeyUp}
-        onKeyDown={handleKeyDown}
-        tabIndex={0}
+        ref={scrollWrapRef}
+        className={styles.scrollWrapper}
         onWheelCapture={(e) => e.stopPropagation()}
-      />
+      >
+        {/* 内层富文本渲染层，不携带滚动限制 */}
+        <div
+          ref={editorRef}
+          className={`${styles.contentEditor} nodrag nopan`}
+          contentEditable="true"
+          data-placeholder="描述你想要生成的画面内容, @引用素材"
+          suppressContentEditableWarning
+          onInput={handleInput}
+          onClick={handleEditorClick}
+          onKeyUp={handleKeyUp}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          tabIndex={0}
+        />
+      </div>
 
-      {atMentionVisible && filterAssets.length > 0 && (
-        <div className={styles.atMediaPopover} style={atMentionStyle}>
-          {filterAssets.map((item) => (
+      {/* @素材下拉弹窗 */}
+      {mentionVisible && assetList.length > 0 && (
+        <div
+          className={`${styles.mentionPopover} nodrag nopan`}
+          style={popoverStyle}
+        >
+          {assetList.map((item) => (
             <div
-              key={`${item.type}${item.main_id}`}
+              key={`${item.type}-${item.main_id}`}
               className={styles.mentionItem}
-              onClick={() => handleAtSelect(item)}
+              onClick={() => handleSelectAsset(item)}
             >
               <div className={styles.itemLeft}>
-                <img src={item.image} alt="" />
-                <span>{item.label}</span>
+                <img src={item.image} alt="" className={styles.itemThumb} />
+                <span className={styles.itemLabel}>{item.label}</span>
               </div>
-              <span className={styles.itemTag}>@{item.main_id}</span>
+              <span className={styles.itemIdTag}>@{item.main_id}</span>
             </div>
           ))}
         </div>

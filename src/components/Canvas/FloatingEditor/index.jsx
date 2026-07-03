@@ -141,25 +141,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
         onMouseDown={(e) => e.stopPropagation()}
         onMouseUp={(e) => e.stopPropagation()}
       >
-        <Button
-          icon={<ArrowsAltOutlined />}
-          size="small"
-          style={{
-            position: "absolute",
-            top: 8,
-            right: 8,
-            zIndex: 10,
-            background: "#2a2a30",
-            borderColor: "#303030",
-            color: "#fff",
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            openFullScreen();
-          }}
-        />
-
-        {/* 非全屏：放大按钮；全屏：缩小关闭按钮，二选一 */}
+        {/* 全屏切换按钮 */}
         {!isFullScreen ? (
           <Button
             icon={<ArrowsAltOutlined />}
@@ -209,10 +191,14 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
           style={{
             flex: 1,
             minHeight: 0,
-            margin: "8px 0",
+            margin: "4px 0",
           }}
         >
-          <PromptInputArea html={prompt} onChangeHtml={setPrompt} />
+          <PromptInputArea
+            html={prompt}
+            onChangeHtml={setPrompt}
+            isFullScreen={isFullScreen}
+          />
         </div>
 
         {/* 底部全部参数工具栏 */}

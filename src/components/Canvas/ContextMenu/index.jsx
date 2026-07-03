@@ -12,7 +12,7 @@ import { useEffect, useRef } from "react";
  * 画布右键菜单组件 - 根据右键目标（画布/节点）显示不同操作
  * 支持添加图片/视频、复制粘贴、删除节点等操作
  */
-const ContextMenu = ({ onAddImage, onAddVideo }) => {
+const ContextMenu = ({ onAddImage, onAddVideo, onUpload }) => {
   const menuRef = useRef(null);
   const {
     contextMenu,
@@ -134,14 +134,12 @@ const ContextMenu = ({ onAddImage, onAddVideo }) => {
           label: "粘贴",
           icon: <UpCircleOutlined />,
           onClick: handlePaste,
-          disabled: !clipboard,
         },
         {
           key: "upload",
           label: "上传",
           icon: <ArrowUpOutlined />,
-          onClick: handlePaste,
-          disabled: !clipboard,
+          onClick: onUpload,
         },
       ];
     }

@@ -78,7 +78,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
         left: 0,
         transform: "translateX(-50%)",
         width: "900px",
-        height: "600px",
+        height: "700px",
         borderRadius: "10px",
       };
     }
@@ -87,7 +87,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
       ...baseStyle,
       top: "calc(50% + 160px)",
       width: 900,
-      height: 300,
+      height: 400,
     };
   }, [visible, isFullScreen]);
 

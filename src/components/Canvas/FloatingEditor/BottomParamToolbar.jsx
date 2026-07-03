@@ -2,10 +2,10 @@ import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import useCanvasStore from "@/store/canvasStore";
 import { getParamChineseName } from "@/utils/paramsMap.js";
 import {
-  ArrowUpOutlined,
-  NotificationOutlined,
-  SoundOutlined,
-  StarOutlined,
+    ArrowUpOutlined,
+    NotificationOutlined,
+    SoundOutlined,
+    StarOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, Popover, Radio, Space, Switch } from "antd";
 import { useEffect, useRef, useState } from "react";

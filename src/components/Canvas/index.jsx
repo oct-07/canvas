@@ -81,20 +81,23 @@ const CanvasContent = () => {
 
   const [canvasName, setCanvasName] = useState("");
 
+  // 加载画布详情（用 ref 防止 StrictMode 重复调用）
+  const canvasDetailRef = useRef(false);
   useEffect(() => {
+    if (canvasDetailRef.current) return;
+    canvasDetailRef.current = true;
+
     const params = new URLSearchParams(window.location.search);
     const canvasId = params.get("canvas_id");
     // 没有画布ID直接退出
     if (!canvasId) return;
 
-    let cancelled = false;
     // 获取store全部方法
     const canvasStore = useCanvasStore.getState();
 
     const loadCanvasDetail = async () => {
       try {
         const res = await getCanvasDetail({ canvas_id: canvasId });
-        if (cancelled) return;
         const detail = res;
 
         canvasStore.setCanvasMeta({
@@ -108,11 +111,7 @@ const CanvasContent = () => {
     };
 
     loadCanvasDetail();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [setGlobalStyle]);
+  }, []);
   const handleConnect = useCallback(
     (connection) => {
       // 标记原生（精确落在手柄）连线已处理，避免磁吸重复建边

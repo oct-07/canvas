@@ -8,13 +8,27 @@ import {
   VideoCameraOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, Input, Tooltip } from "antd";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
  * 侧边栏组件 - 画布元素导航列表
  * 展示画布上已存在的图片/视频节点，支持筛选、搜索、拖拽复用
  */
 const SideBar = ({ collapsed, onToggle }) => {
+  const sideBarRef = useRef(null);
+
+  // 侧边栏不缩放
+  useEffect(() => {
+    const handleWheel = (e) => {
+      if (e.ctrlKey && sideBarRef.current?.contains(e.target)) {
+        e.preventDefault();
+      }
+    };
+
+    document.addEventListener("wheel", handleWheel, { passive: false });
+    return () => document.removeEventListener("wheel", handleWheel);
+  }, []);
+
   // 读取节点切片状态
   const {
     nodes,
@@ -97,6 +111,7 @@ const SideBar = ({ collapsed, onToggle }) => {
 
   return (
     <div
+      ref={sideBarRef}
       style={{
         position: "fixed",
         left: 0,

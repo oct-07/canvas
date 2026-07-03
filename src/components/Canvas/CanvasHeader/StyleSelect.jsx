@@ -357,7 +357,10 @@ export default function StyleSelect({
 
   const getDisplayText = () => {
     if (!currentValue) return "请选择风格";
-    const matched = allStyleList.find((item) => item.style_id === currentValue);
+    // style_id 可能是 number，统一转 string 比较
+    const matched = allStyleList.find(
+      (item) => String(item.style_id) === String(currentValue)
+    );
     const matchedName = matched?.name;
     return selectedStyleName || matchedName || currentValue;
   };

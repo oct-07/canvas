@@ -13,9 +13,9 @@ import CanvasHeader from "./CanvasHeader";
 import ContextMenu from "./ContextMenu";
 import CustomEdge from "./CustomEdge";
 import { nodeTypes } from "./CustomNode";
-import SideBar from "./SideBar";
 import MagnetHandle from "./CustomPoint/MagnetHandle";
 import { useConnectionMagnet } from "./CustomPoint/useConnectionMagnet";
+import SideBar from "./SideBar";
 
 import { getCanvasDetail } from "@/api";
 import useStyleStore from "@/store/styleStore";
@@ -94,27 +94,14 @@ const CanvasContent = () => {
     const loadCanvasDetail = async () => {
       try {
         const res = await getCanvasDetail({ canvas_id: canvasId });
-        const detail = res?.data ?? res;
         if (cancelled) return;
+        const detail = res;
 
-        // 把url解析出来的canvasId存入仓库
-        canvasStore.setCanvasId(canvasId);
-
-        // 回显名称
-        if (detail?.canvas_name != null) {
-          canvasStore.setCanvasName(detail.canvas_name);
-        }
-        // 回显全局风格
-        if (detail?.style_id != null) {
-          canvasStore.setGlobalStyle(detail.style_id);
-        }
-
-        // TODO: canvas_data 回显暂不处理，后续确认节点/连线结构后再实现
-        // if (detail?.canvas_data) {
-        //   const { nodes = [], edges = [] } = detail.canvas_data;
-        //   canvasStore.setNodes(nodes);
-        //   canvasStore.setEdges(edges);
-        // }
+        canvasStore.setCanvasMeta({
+          canvasId,
+          canvasName: detail.canvas_name,
+          globalStyle: String(detail.style_id),
+        });
       } catch (err) {
         console.error("加载画布详情失败：", err);
       }
@@ -449,7 +436,6 @@ const CanvasContent = () => {
           onNodeClick={handleNodeClick}
           nodeTypes={nodeTypes}
           isValidConnection={isValidConnection}
-          fitView
           snapToGrid
           snapGrid={[15, 15]}
           defaultEdgeOptions={{

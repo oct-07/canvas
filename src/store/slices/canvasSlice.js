@@ -4,6 +4,7 @@
  */
 import { saveCanvas } from "@/api";
 import { message } from "antd";
+import useStyleStore from "@/store/styleStore";
 /**
  * 画布 Slice 初始状态
  */
@@ -54,12 +55,15 @@ export const createCanvasSlice = (getStore, setStore) => ({
    * 批量更新画布基础元信息（ID/名称/风格，仅本地状态）
    * @param {Object} meta - { canvasId, canvasName, globalStyle }
    */
-  setCanvasMeta: (meta) =>
+  setCanvasMeta: (meta) => {
     setStore({
       canvasId: meta.canvasId,
       canvasName: meta.canvasName,
       globalStyle: meta.globalStyle,
-    }),
+    });
+    // 同步更新 styleStore，保持全局风格数据一致
+    useStyleStore.getState().setGlobalStyle(meta.globalStyle);
+  },
 
   /**
    * 视口操作

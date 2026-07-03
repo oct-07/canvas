@@ -14,7 +14,7 @@ import useCanvasStore from "@/store/canvasStore";
 // ========== 可调常量 ==========
 const STROKE_WIDTH = 2; // 连接线线宽
 const HIT_EXTEND = 4; // 有效命中范围：向线条两侧各扩展 4px
-const HOVER_DELAY = 3000; // 悬停满 3 秒后显示删除图标
+const HOVER_DELAY = 1500; // 悬停满 1.5 秒后显示删除图标
 const DELETE_SIZE = 24; // 删除图标直径
 const SAMPLE = 48; // 采样点数量（用于计算光标到贝塞尔曲线的距离）
 
@@ -161,7 +161,7 @@ export default function CustomEdge({
     if (!engaged) return;
     const onMove = (e) => {
       const flow = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      // 命中容差换算到画布坐标：屏幕像素 / zoom
+      // 命中容差换算到画布坐标：屏幕像素 / zoom（保证屏幕命中宽度恒定 ±4px）
       const tol = (STROKE_WIDTH / 2 + HIT_EXTEND) / (zoom || 1);
       if (distanceToPath(flow.x, flow.y) <= tol) {
         // 仍在有效区域：图标跟随光标（不重置计时）
@@ -212,12 +212,14 @@ export default function CustomEdge({
         }}
       />
 
-      {/* 透明加宽交互路径：命中范围 = 线条 ±4px */}
+      {/* 透明加宽交互路径：命中范围 = 线条 ±4px。
+          strokeWidth 按 1/zoom 补偿，使屏幕命中宽度恒定，缩放后依旧易命中、手感一致。
+          该路径位于 ReactFlow 视口变换层内，自动适配画布的缩放与平移。 */}
       <path
         d={edgePath}
         fill="none"
         strokeOpacity={0}
-        strokeWidth={STROKE_WIDTH + HIT_EXTEND * 2}
+        strokeWidth={(STROKE_WIDTH + HIT_EXTEND * 2) / (zoom || 1)}
         className="react-flow__edge-interaction"
         style={{ cursor: "pointer", pointerEvents: "stroke" }}
         onClick={handleEdgeClick}

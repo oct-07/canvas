@@ -41,6 +41,7 @@
   box-sizing: border-box;
   contain: layout size;
   outline: none;
+  overflow: auto;
 }
 
 /* 空输入框占位提示 */

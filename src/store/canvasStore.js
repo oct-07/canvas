@@ -56,8 +56,13 @@ const useCanvasStore = create((set, get) => {
     // 批量更新
     setNodesAndEdges: (nodes, edges) => set({ nodes, edges }),
 
-    // 清空选中
-    clearSelection: () => set({ selectedNodeId: null, selectedEdgeId: null }),
+    // 清空选中（同时隐藏连线悬停删除图标）
+    clearSelection: () =>
+      set({
+        selectedNodeId: null,
+        selectedEdgeId: null,
+        hoverDeleteEdgeId: null,
+      }),
 
     // 重置画布
     resetCanvas: () => {

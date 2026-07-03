@@ -20,6 +20,8 @@ export const uiInitialState = {
   activeNodeId: null,
   panelPos: null,
   nodeEditors: {},
+  // 全局唯一：当前正在显示「悬停跟随删除图标」的连线ID（保证全局最多 1 个）
+  hoverDeleteEdgeId: null,
 };
 
 /**
@@ -46,6 +48,11 @@ export const createUISlice = (getStore, setStore) => ({
   // 清空选中连线
   clearActiveEdge: () => {
     setStore({ selectedEdgeId: null });
+  },
+  // 全局唯一：设置当前显示删除图标的连线（null 表示隐藏）
+  hoverDeleteEdgeId: null,
+  setHoverDeleteEdgeId: (edgeId) => {
+    setStore({ hoverDeleteEdgeId: edgeId });
   },
   contextMenu: {
     visible: false,

@@ -1,13 +1,19 @@
+import { createContent } from "@/api";
 import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import useCanvasStore from "@/store/canvasStore";
-import { getParamChineseName } from "@/utils/paramsMap.js";
+import { buildMediaBody } from "@/utils/generateParams.js";
 import {
-    ArrowUpOutlined,
-    NotificationOutlined,
-    SoundOutlined,
-    StarOutlined,
+  getParamChineseName,
+  getParamValueChinese,
+} from "@/utils/paramsMap.js";
+import {
+  ArrowUpOutlined,
+  LoadingOutlined,
+  NotificationOutlined,
+  SoundOutlined,
+  StarOutlined,
 } from "@ant-design/icons";
-import { Button, Dropdown, Popover, Radio, Space, Switch } from "antd";
+import { Button, Dropdown, message, Popover, Radio, Space, Switch } from "antd";
 import { useEffect, useRef, useState } from "react";
 
 // 比例数据源：固定 key、展示文案、宽高比值
@@ -33,6 +39,7 @@ const RATIO_LIST = [
 ];
 
 const BottomParamToolbar = ({
+  nodeType,
   sizeConfig,
   onChangeSize,
   preset,
@@ -75,6 +82,8 @@ const BottomParamToolbar = ({
   const [currentRatio, setCurrentRatio] = useState(
     paramValues.aspect_ratio || "auto",
   );
+  // 提交加载状态
+  const [submitting, setSubmitting] = useState(false);
 
   // 同步外部 paramValues 变化到比例状态
   useEffect(() => {
@@ -166,7 +175,7 @@ const BottomParamToolbar = ({
               item.prop_value_name === currentVal,
           );
           if (matched) {
-            label = matched.prop_value_name;
+            label = getParamValueChinese(matched.prop_value_name);
           }
         }
 
@@ -367,7 +376,7 @@ const BottomParamToolbar = ({
             <Space wrap size={8}>
               {options.map((opt) => (
                 <Radio.Button key={opt.value} value={opt.value}>
-                  {opt.label}
+                  {getParamValueChinese(opt.label)}
                 </Radio.Button>
               ))}
             </Space>
@@ -448,6 +457,35 @@ const BottomParamToolbar = ({
       updateNodeEditorData(activeNodeId, newEditorData);
     },
   }));
+
+  // 调用 AI 生成接口
+  const handleApiSubmit = async () => {
+    if (!editor || !activeNodeId) return;
+    setSubmitting(true);
+    try {
+      const nodeData = {
+        nodeType,
+        params: editor.data.params || {},
+        model_frame: editor.data.model_frame,
+        refAssetList: editor.data.refAssetList || [],
+        provider: editor.data.provider || "",
+        model_name: editor.data.model_name || "",
+        model_id: editor.data.model_id || "",
+        prompt: editor.data.prompt || "",
+        negative_prompt: editor.data.negative_prompt || "",
+        team_id: editor.data.team_id || "",
+        vip_weight: editor.data.vip_weight || "",
+      };
+      const body = buildMediaBody(nodeData);
+      await createContent(body);
+      message.success("生成任务已提交");
+    } catch (err) {
+      console.error("[生成失败]", err);
+      message.error("生成失败，请重试");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div
@@ -545,8 +583,9 @@ const BottomParamToolbar = ({
         </span>
         <Button
           shape="circle"
-          onClick={onSubmit}
-          icon={<ArrowUpOutlined />}
+          loading={submitting}
+          icon={submitting ? <LoadingOutlined /> : <ArrowUpOutlined />}
+          onClick={handleApiSubmit}
           style={{
             background: "#2c2c2c",
             borderColor: "#2c2c2c",

@@ -4,7 +4,7 @@ export const PARAM_NAME_MAP = {
   resolution_tier: "分辨率",
   aspect_ratio: "比例",
   duration: "时长",
-  quality_mode: "画质模式",
+  quality_mode: "质量",
   audio_enabled: "音频开关",
   result_mode: "结果模式",
   prompt_enhance: "提示词增强",

@@ -10,7 +10,7 @@ import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { ArrowsAltOutlined, ShrinkOutlined } from "@ant-design/icons";
 import { Button } from "antd";
 
-const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
+const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
@@ -203,6 +203,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose }) => {
 
         {/* 底部全部参数工具栏 */}
         <BottomParamToolbar
+          nodeType={nodeType}
           model={model}
           onChangeModel={setModel}
           sizeConfig={sizeConfig}

@@ -5,7 +5,7 @@ import { post } from "@/utils/request.js";
  * 调用 AI 生成图片或视频内容
  */
 export const createContent = (data) => {
-  return post("/index/aicreate/createContent", data);
+  return post("/index/aicreate/createContent1", data);
 };
 
 //获取模型列表

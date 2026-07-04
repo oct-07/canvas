@@ -72,25 +72,6 @@ export const createNodesSlice = (getStore, setStore) => ({
   },
 
   /**
-   * 同步节点尺寸（宽高）到 ReactFlow store
-   * 当节点 aspect_ratio 变化时调用，使画布内节点盒子同步变化
-   * 加入相等性短路（避免无意义 re-render）与历史保存（支持撤销/重做）
-   */
-  syncNodeDimensions: (nodeId, width, height) => {
-    const { saveHistory } = getStore();
-    setStore((state) => {
-      const target = state.nodes.find((n) => n.id === nodeId);
-      if (target?.width === width && target?.height === height) return state;
-      saveHistory();
-      return {
-        nodes: state.nodes.map((node) =>
-          node.id === nodeId ? { ...node, width, height } : node
-        ),
-      };
-    });
-  },
-
-  /**
    * 删除节点
    */
   removeNode: (nodeId) => {

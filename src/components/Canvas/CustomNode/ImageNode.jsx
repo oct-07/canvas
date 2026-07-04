@@ -1,7 +1,7 @@
 import useCanvasStore from "@/store/canvasStore";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { PictureOutlined } from "@ant-design/icons";
-import { Position } from "@xyflow/react";
+import { Position, useUpdateNodeInternals } from "@xyflow/react";
 import { memo, useEffect, useMemo } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
@@ -14,6 +14,7 @@ const ImageNode = memo(({ id, data, selected }) => {
   const { isTarget, tiltX, tiltY, canConnect } = useNodeMagnet(id);
   const magnetColor = canConnect ? "#52c41a" : "#ff4d4f";
   const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
+  const updateNodeInternals = useUpdateNodeInternals();
 
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
@@ -38,11 +39,15 @@ const ImageNode = memo(({ id, data, selected }) => {
     };
   }, [aspectRatio]);
 
-  // 同步节点尺寸到 ReactFlow store，使画布盒子跟随比例变化
+  // 同步节点尺寸到 ReactFlow：通知画布重新测量节点 DOM 并更新 handleBounds，
+  // 使连接线端点能跟随节点高度变化动态调整到侧边中点
   useEffect(() => {
-    useCanvasStore
-      .getState()
-      .syncNodeDimensions(id, previewStyle.width, previewStyle.height);
+    // 等待 DOM 渲染完成后再通知 ReactFlow 测量（height 变化有 CSS 过渡）
+    const timer = setTimeout(() => {
+      updateNodeInternals(id);
+    }, 320);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, previewStyle.width, previewStyle.height]);
 
   return (

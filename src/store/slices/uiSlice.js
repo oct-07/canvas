@@ -20,6 +20,8 @@ export const uiInitialState = {
   activeNodeId: null,
   panelPos: null,
   nodeEditors: {},
+  // 全局唯一：当前正在拖动的节点ID（拖动期间强制隐藏其提示词框，松手后由 index.jsx 决定恢复/打开）
+  draggingNodeId: null,
   // 全局唯一：当前正在显示「悬停跟随删除图标」的连线ID（保证全局最多 1 个）
   hoverDeleteEdgeId: null,
 };
@@ -83,6 +85,9 @@ export const createUISlice = (getStore, setStore) => ({
 
   panelPos: null,
   setPanelPos: (panelPos) => setStore({ panelPos }),
+
+  draggingNodeId: null,
+  setDraggingNodeId: (nodeId) => setStore({ draggingNodeId: nodeId }),
 
   nodeEditors: {},
   showActiveEditor: (nodeId, nodeType) => {

@@ -2,7 +2,7 @@ import useCanvasStore from "@/store/canvasStore";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { PictureOutlined } from "@ant-design/icons";
 import { Position } from "@xyflow/react";
-import { memo, useCallback, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import FloatingEditor from "../FloatingEditor";
@@ -14,62 +14,16 @@ const ImageNode = memo(({ id, data, selected }) => {
   const { isTarget, tiltX, tiltY, canConnect } = useNodeMagnet(id);
   const magnetColor = canConnect ? "#52c41a" : "#ff4d4f";
   const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
-  const showActiveEditor = useCanvasStore((state) => state.showActiveEditor);
-  const setActiveNodeId = useCanvasStore((state) => state.setActiveNodeId);
-  const setNodeEditorPosition = useCanvasStore(
-    (state) => state.setNodeEditorPosition,
-  );
-  const setNodeEditorData = useCanvasStore((state) => state.setNodeEditorData);
 
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
+  const draggingNodeId = useCanvasStore((state) => state.draggingNodeId);
   const editor = nodeEditors[id];
   const isThisEditorOpen = activeNodeId === id && !!editor?.visible;
-
-  const handleNodeClick = useCallback(
-    (e) => {
-      e.stopPropagation();
-      if (isThisEditorOpen) {
-        hideActiveEditor(id);
-        return;
-      }
-
-      showActiveEditor(id, "image");
-      setActiveNodeId(id);
-
-      const node = useCanvasStore
-        .getState()
-        .nodes.find((item) => item.id === id);
-      if (!node) return;
-
-      const viewport = useCanvasStore.getState().viewport;
-      const screenPos = {
-        left: node.position.x * viewport.zoom + viewport.x,
-        top: node.position.y * viewport.zoom + viewport.y + 150,
-      };
-      useCanvasStore.setState((state) => ({
-        activeNodeId: id,
-        nodeEditors: {
-          ...state.nodeEditors,
-          [id]: {
-            visible: true,
-            nodeType: "image",
-            position: screenPos,
-            data: data || {},
-          },
-        },
-        panelPos: screenPos,
-      }));
-    },
-    [
-      id,
-      isThisEditorOpen,
-      hideActiveEditor,
-      showActiveEditor,
-      setActiveNodeId,
-      data,
-    ],
-  );
+  // 当前节点正在被拖动 → 浮窗强制隐藏（不卸载，保留内部输入状态）
+  const isThisNodeDragging = draggingNodeId === id;
+  // 边框高亮优先级：磁吸命中 > 当前激活节点 > React Flow 选中 > 默认
+  const isActive = isThisEditorOpen || activeNodeId === id || selected;
 
   const nodeData = editor?.data ?? data ?? {};
   const aspectRatio = nodeData.aspect_ratio || DEFAULT_ASPECT_RATIO;
@@ -93,22 +47,21 @@ const ImageNode = memo(({ id, data, selected }) => {
 
   return (
     <div
-      onClick={handleNodeClick}
       style={{
         position: "relative",
         width: previewStyle.width,
-        aspectRatio: previewStyle.aspectRatio, // 新增：原生比例自动控制高度
+        aspectRatio: previewStyle.aspectRatio,
         background: "#262626",
         borderRadius: 12,
         border: isTarget
           ? `2px solid ${magnetColor}`
-          : selected
+          : isActive
             ? "2px solid #177ddc"
             : "1px solid #303030",
         overflow: "visible",
         boxShadow: isTarget
           ? `0 0 0 2px ${magnetColor}66, 0 8px 24px ${magnetColor}44`
-          : selected
+          : isActive
             ? "0 0 20px rgba(23, 125, 220, 0.3)"
             : "0 4px 12px rgba(0,0,0,0.3)",
         transition: "box-shadow 0.15s ease, border-color 0.15s ease",
@@ -116,7 +69,6 @@ const ImageNode = memo(({ id, data, selected }) => {
         transform: isTarget
           ? `perspective(700px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`
           : "none",
-        cursor: "pointer",
       }}
     >
       <PlusHandle
@@ -180,33 +132,38 @@ const ImageNode = memo(({ id, data, selected }) => {
         offsetKey="right"
       />
 
-      {isThisEditorOpen && (
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: "100%",
-            marginTop: 8,
-            zIndex: 9999,
+      {/* 节点浮窗：常驻挂载，仅在打开时显示；当前节点被拖动时强制透明，
+          保留组件内部 useState（避免提交后输入丢失，与 P0 评审 2.2 同源修复） */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: "100%",
+          marginTop: 8,
+          zIndex: 9999,
+          opacity: isThisEditorOpen && !isThisNodeDragging ? 1 : 0,
+          pointerEvents:
+            isThisEditorOpen && !isThisNodeDragging ? "auto" : "none",
+          visibility:
+            isThisEditorOpen || isThisNodeDragging ? "visible" : "hidden",
+        }}
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+      >
+        <FloatingEditor
+          visible
+          position={{ left: 0, top: 0 }}
+          nodeType="image"
+          data={nodeData}
+          onSubmit={({ prompt, style, params, imageUrl }) => {
+            const payload = { prompt, style, params };
+            if (imageUrl) payload.imageUrl = imageUrl;
+            useCanvasStore.getState().updateNodeData(id, payload);
           }}
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onMouseUp={(e) => e.stopPropagation()}
-        >
-          <FloatingEditor
-            visible
-            position={{ left: 0, top: 0 }}
-            nodeType="image"
-            data={nodeData}
-            onSubmit={({ prompt, style, params, imageUrl }) => {
-              const payload = { prompt, style, params };
-              if (imageUrl) payload.imageUrl = imageUrl;
-              useCanvasStore.getState().updateNodeData(id, payload);
-            }}
-            onClose={() => hideActiveEditor(id)}
-          />
-        </div>
-      )}
+          onClose={() => hideActiveEditor(id)}
+        />
+      </div>
     </div>
   );
 });

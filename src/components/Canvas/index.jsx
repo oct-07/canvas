@@ -30,7 +30,11 @@ const CanvasContent = () => {
     [],
   );
   const { screenToFlowPosition } = useReactFlow();
-  const draggedNodeIdRef = useRef(null);
+
+  // 拖动前快照：记录本次拖动开始前，被拖节点是否已经打开了提示词框
+  // draggedId: 当前正在拖动的节点id
+  // wasActive: 拖动开始时该节点的浮窗是否已经是打开状态
+  const dragSnapshotRef = useRef({ draggedId: null, wasActive: false });
 
   // 连接点磁吸交互（浮动加号手柄 / 卡片 3D 倾斜 / 可连反馈）
   const { onConnectStart, onConnectEnd, markNativeConnect } =
@@ -56,6 +60,8 @@ const CanvasContent = () => {
     hideContextMenu,
     hideActiveEditor,
     removeNode,
+    // 设置拖动中的节点（拖动期间隐藏其浮窗）
+    setDraggingNodeId,
     // 预加载模型参数
     loadModelSkuParams,
   } = useCanvasStore();
@@ -162,34 +168,78 @@ const CanvasContent = () => {
     hideActiveEditor();
   }, [clearSelection, hideContextMenu, hideActiveEditor]);
 
-  const handleNodeDragStart = useCallback((_event, node) => {
-    draggedNodeIdRef.current = node.id;
-  }, []);
+  const handleNodeDragStart = useCallback(
+    (_event, node) => {
+      const store = useCanvasStore.getState();
+      const wasActive =
+        store.activeNodeId === node.id && !!store.nodeEditors[node.id]?.visible;
+
+      // 快照写入：拖动结束后用于决定「恢复显示 vs 首次打开」
+      dragSnapshotRef.current = { draggedId: node.id, wasActive };
+
+      // 标记全局 drag 状态：节点组件与 FloatingEditor 据此隐藏自身
+      setDraggingNodeId(node.id);
+      document.body.style.cursor = "grabbing";
+    },
+    [setDraggingNodeId],
+  );
 
   const handleNodeDragStop = useCallback(
     (_event, node) => {
+      const { draggedId, wasActive } = dragSnapshotRef.current;
+      const store = useCanvasStore.getState();
+
+      // 退出拖动态：节点组件和 FloatingEditor 重新可见
+      setDraggingNodeId(null);
+      document.body.style.cursor = "";
+
       saveHistory();
-      if (draggedNodeIdRef.current === node.id) {
-        draggedNodeIdRef.current = null;
+
+      // 仅当真在被拖的是本次记录的那个节点时才执行后续逻辑（防止 React Flow
+      // 短时间内多次触发 start/stop 导致状态错位）
+      if (draggedId === node.id && !wasActive) {
+        // 拖动前浮窗没打开 → 拖动结束即自动打开（拖动 = 用户想用该节点）
+        const viewport = store.viewport;
+        const pos = getNodeScreenPos(node, viewport);
+        const nodeData =
+          store.nodes.find((item) => item.id === node.id)?.data || {};
+
+        useCanvasStore.setState((state) => ({
+          activeNodeId: node.id,
+          nodeEditors: {
+            ...state.nodeEditors,
+            [node.id]: {
+              visible: true,
+              nodeType: node.type,
+              position: pos,
+              data: nodeData,
+            },
+          },
+          panelPos: pos,
+        }));
       }
+      // wasActive 为 true：浮窗在拖动期间被隐藏，松手后 FloatingEditor
+      // 自身的 opacity 会随 draggingNodeId 复位自动恢复显示，无需额外动作。
+
+      dragSnapshotRef.current = { draggedId: null, wasActive: false };
     },
-    [saveHistory],
+    [saveHistory, setDraggingNodeId],
   );
 
   const handleNodeClick = useCallback(
     (_event, node) => {
       const store = useCanvasStore.getState();
-      const editor = store.nodeEditors[node.id];
-      if (editor?.visible) {
+
+      // 已打开：再次点击同一个节点 → 关闭
+      if (store.activeNodeId === node.id && store.nodeEditors[node.id]?.visible) {
         store.hideActiveEditor(node.id);
         return;
       }
 
-      clearSelection();
-
-      const viewport = useCanvasStore.getState().viewport;
+      // 切换 / 新打开：写入或覆盖 nodeEditors[node.id]
+      const viewport = store.viewport;
       const pos = getNodeScreenPos(node, viewport);
-      const nodeData = nodes.find((item) => item.id === node.id)?.data || {};
+      const nodeData = store.nodes.find((item) => item.id === node.id)?.data || {};
 
       useCanvasStore.setState((state) => ({
         activeNodeId: node.id,
@@ -205,43 +255,16 @@ const CanvasContent = () => {
         panelPos: pos,
       }));
     },
-    [clearSelection, nodes],
+    [],
   );
 
   const handleNodesChange = useCallback(
     (changes) => {
       onNodesChange(changes);
 
+      // 浮窗跟随节点拖动：只有当前激活节点移动时才同步位置
+      // 浮窗的打开/关闭统一由 handleNodeClick 负责，避免与 select change 重复触发导致状态错乱
       changes.forEach((change) => {
-        if (change.type === "select" && change.selected) {
-          const store = useCanvasStore.getState();
-          const node = store.nodes.find((item) => item.id === change.id);
-          if (!node) return;
-
-          const viewport = store.viewport;
-          const pos = getNodeScreenPos(node, viewport);
-          const nodeData = node.data || {};
-
-          useCanvasStore.setState((state) => ({
-            activeNodeId: change.id,
-            nodeEditors: {
-              ...state.nodeEditors,
-              [change.id]: {
-                visible: true,
-                nodeType: "image",
-                position: pos,
-                data: nodeData,
-              },
-            },
-            panelPos: pos,
-          }));
-        }
-
-        if (change.type === "select" && !change.selected) {
-          useCanvasStore.getState().hideActiveEditor(change.id);
-          useCanvasStore.getState().setActiveNodeId(null);
-        }
-
         if (change.type === "position" && change.position) {
           const store = useCanvasStore.getState();
           if (store.activeNodeId === change.id) {

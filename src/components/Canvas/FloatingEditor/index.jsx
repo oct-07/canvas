@@ -1,4 +1,5 @@
 import useCanvasStore from "@/store/canvasStore";
+import { useViewport } from "@xyflow/react";
 import { ConfigProvider, theme } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
@@ -14,6 +15,8 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
+  // 实时缩放比：节点在画布内的高度增量需按 zoom 换算到屏幕像素
+  const { zoom } = useViewport();
 
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -54,6 +57,19 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
     setParams(data.params ?? params);
   }, [activeNodeId]);
 
+  // 节点因比例变化产生的高度增量（画布坐标），用于让提示词框同步下移，
+  // 始终与节点底边保持默认间距，避免高比例时节点与提示词框重叠。
+  // 图片/视频节点默认宽度均为 260，默认比例 1:1 → 默认高度 260。
+  const NODE_WIDTH = 260;
+  const NODE_DEFAULT_HEIGHT = 260;
+  const nodeHeightDelta = useMemo(() => {
+    const aspectRatio = editor?.data?.aspect_ratio;
+    if (!aspectRatio) return 0;
+    const size = getAspectRatioSize(aspectRatio);
+    const height = Math.round((NODE_WIDTH * size.height) / size.width);
+    return Math.max(0, height - NODE_DEFAULT_HEIGHT);
+  }, [editor?.data?.aspect_ratio]);
+
   // 弹窗定位样式
   const wrapperStyle = useMemo(() => {
     if (!visible) return { display: "none" };
@@ -87,11 +103,12 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
 
     return {
       ...baseStyle,
-      top: "calc(50% + 160px)",
+      // 基础位置 + 节点高度增量（按 zoom 换算为屏幕像素），使提示词框随节点变高同步下移
+      top: `calc(50% + 160px + ${nodeHeightDelta * zoom}px)`,
       width: 900,
       height: 400,
     };
-  }, [visible, isFullScreen]);
+  }, [visible, isFullScreen, nodeHeightDelta, zoom]);
 
   // 提交生成
   const handleSend = () => {

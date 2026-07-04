@@ -50,6 +50,7 @@ const ImageNode = memo(({ id, data, selected }) => {
       style={{
         position: "relative",
         width: previewStyle.width,
+        height: previewStyle.height,
         aspectRatio: previewStyle.aspectRatio,
         background: "#262626",
         borderRadius: 12,
@@ -64,7 +65,8 @@ const ImageNode = memo(({ id, data, selected }) => {
           : isActive
             ? "0 0 20px rgba(23, 125, 220, 0.3)"
             : "0 4px 12px rgba(0,0,0,0.3)",
-        transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+        transition:
+          "box-shadow 0.15s ease, border-color 0.15s ease, height 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
         transformStyle: "preserve-3d",
         transform: isTarget
           ? `perspective(700px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`
@@ -87,6 +89,7 @@ const ImageNode = memo(({ id, data, selected }) => {
           justifyContent: "center",
           borderRadius: "12px 12px 0 0",
           overflow: "hidden",
+          transition: "height 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         {nodeData.url || nodeData.thumbnail ? (

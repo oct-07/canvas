@@ -7,7 +7,8 @@ import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import FloatingEditor from "../FloatingEditor";
 
-const VIDEO_NODE_WIDTH = 240;
+// 与图片节点保持一致的默认宽度，确保两种节点初始高宽相同
+const VIDEO_NODE_WIDTH = 260;
 const DEFAULT_ASPECT_RATIO = "227";
 
 /**
@@ -55,6 +56,7 @@ const VideoNode = memo(({ id, data, selected }) => {
       style={{
         position: "relative",
         width: previewStyle.width,
+        height: previewStyle.height,
         aspectRatio: previewStyle.aspectRatio,
         background: "#262626",
         borderRadius: "12px",
@@ -69,7 +71,8 @@ const VideoNode = memo(({ id, data, selected }) => {
           : isActive
             ? "0 0 20px rgba(23, 125, 220, 0.3)"
             : "0 4px 12px rgba(0,0,0,0.3)",
-        transition: "box-shadow 0.15s ease, border-color 0.15s ease",
+        transition:
+          "box-shadow 0.15s ease, border-color 0.15s ease, height 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
         transformStyle: "preserve-3d",
         transform: isTarget
           ? `perspective(700px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`
@@ -94,6 +97,7 @@ const VideoNode = memo(({ id, data, selected }) => {
           justifyContent: "center",
           overflow: "hidden",
           borderRadius: "10px",
+          transition: "height 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
         {nodeData.thumbnail && (

@@ -3,6 +3,7 @@ import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { Position } from "@xyflow/react";
 import { memo, useEffect, useMemo, useState } from "react";
+import { useReactFlow } from "@xyflow/react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import FloatingEditor from "../FloatingEditor";
@@ -19,6 +20,7 @@ const VideoNode = memo(({ id, data, selected }) => {
   const { isTarget, tiltX, tiltY, canConnect } = useNodeMagnet(id);
   const magnetColor = canConnect ? "#52c41a" : "#ff4d4f";
   const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
+  const { getViewport } = useReactFlow();
 
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
@@ -42,20 +44,17 @@ const VideoNode = memo(({ id, data, selected }) => {
   }, [aspectRatio]);
 
   // 节点屏幕坐标（锚点 = 节点底部中央），用于 FloatingEditor 定位
-  // 通过 selector 只订阅当前节点，拖动时本节点坐标变化会触发重算
-  const node = useCanvasStore((state) => state.nodes.find((n) => n.id === id));
-  const viewport = useCanvasStore((state) => state.viewport);
   const [floatingPos, setFloatingPos] = useState({ left: 0, top: 0 });
   useEffect(() => {
-    const worldX = node?.position?.x ?? 0;
-    const worldY = node?.position?.y ?? 0;
-    const screenLeft = viewport.x + worldX * viewport.zoom;
-    const screenTop = viewport.y + worldY * viewport.zoom;
+    const viewport = getViewport();
+    const { x: vx, y: vy, zoom } = viewport;
+    const screenLeft = vx + (data?.position?.x ?? 0) * zoom;
+    const screenTop = vy + (data?.position?.y ?? 0) * zoom;
     setFloatingPos({
       left: screenLeft + VIDEO_NODE_WIDTH / 2,
       top: screenTop + previewStyle.height,
     });
-  }, [node, viewport.x, viewport.y, viewport.zoom, previewStyle.height]);
+  }, [data?.position, getViewport, previewStyle.height]);
 
   // 同步节点尺寸到 ReactFlow store
   useEffect(() => {

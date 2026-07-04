@@ -12,11 +12,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useCanvasStore from "@/store/canvasStore";
 
 // ========== 可调常量 ==========
-const STROKE_WIDTH = 2; // 连接线线宽
-const HIT_EXTEND = 4; // 有效命中范围：向线条两侧各扩展 4px
-const HOVER_DELAY = 1500; // 悬停满 1.5 秒后显示删除图标
+const HIT_EXTEND = 16; // 命中范围：向线条两侧各扩展（flow 单位），屏宽容差 ≈ (STROKE_WIDTH/2 + HIT_EXTEND) / zoom 像素
+const HOVER_DELAY = 400; // 悬停 N ms 后显示删除图标
 const DELETE_SIZE = 24; // 删除图标直径
-const SAMPLE = 48; // 采样点数量（用于计算光标到贝塞尔曲线的距离）
+const STROKE_WIDTH = 2; // 连接线线宽
+const SAMPLE = 128; // 采样点数量（沿线等弧长采样，用于最近距离判定；预算到内存，无 DOM 读）
 
 /**
  * 计算连接线端点的真实锚点（= Handle 包围盒中心 = 节点边缘）。
@@ -101,28 +101,83 @@ export default function CustomEdge({
   const [cursor, setCursor] = useState(null); // 光标在画布坐标系中的实时位置
   const showDelete = hoverDeleteEdgeId === id;
 
-  // 用于测量「光标到曲线距离」的离屏 path 元素（随 edgePath 变化重建）
-  const measurePath = useMemo(() => {
+  // 预算好的采样点 + 累计弧长（替代每帧调用 SVG.getPointAtLength，性能更稳）
+  // 仅在 edgePath 变化时重建一次。
+  const sampleTable = useMemo(() => {
     if (typeof document === "undefined") return null;
     const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
     p.setAttribute("d", edgePath);
-    return p;
+    const total = p.getTotalLength();
+    const points = new Array(SAMPLE + 1);
+    const cumLens = new Array(SAMPLE + 1);
+    cumLens[0] = 0;
+    for (let i = 0; i <= SAMPLE; i++) {
+      const pt = p.getPointAtLength((total * i) / SAMPLE);
+      points[i] = pt;
+      cumLens[i] = (total * i) / SAMPLE;
+    }
+    return { points, cumLens, total };
   }, [edgePath]);
 
-  // 计算画布坐标点到曲线的最近距离（画布坐标单位）
+  // 计算画布坐标点到曲线的最近距离（画布坐标单位）。
+  // 思路：先用二分查找定位到距离光标「弧长最近」的采样段，再在该段线性插值细找一点；
+  // 全程纯数组运算，不读写 DOM。
   const distanceToPath = useCallback(
     (fx, fy) => {
-      if (!measurePath) return Infinity;
-      const total = measurePath.getTotalLength();
-      let min = Infinity;
-      for (let i = 0; i <= SAMPLE; i++) {
-        const pt = measurePath.getPointAtLength((total * i) / SAMPLE);
-        const d = Math.hypot(pt.x - fx, pt.y - fy);
-        if (d < min) min = d;
+      const table = sampleTable;
+      if (!table) return Infinity;
+      const { points, cumLens, total } = table;
+      if (total === 0) return Math.hypot(points[0].x - fx, points[0].y - fy);
+
+      let best = Infinity;
+
+      // 1) 找最近采样段（二分）
+      let lo = 0;
+      let hi = SAMPLE;
+      // 先用相邻段中点距最小的近似定位（O(SAMPLE) 一次最多 128 次，可接受；保留字面逻辑）
+      let approxIdx = 0;
+      let approxMin = Infinity;
+      for (let i = 0; i < SAMPLE; i++) {
+        const a = points[i];
+        const b = points[i + 1];
+        const mx = (a.x + b.x) / 2;
+        const my = (a.y + b.y) / 2;
+        const d = Math.hypot(mx - fx, my - fy);
+        if (d < approxMin) {
+          approxMin = d;
+          approxIdx = i;
+        }
       }
-      return min;
+      // 2) 在该段以及左右各 1 段做线性插值（3 段覆盖）
+      for (let k = -1; k <= 1; k++) {
+        const i = approxIdx + k;
+        if (i < 0 || i >= SAMPLE) continue;
+        const a = points[i];
+        const b = points[i + 1];
+        // 将光标投影到 ab 上，取最近点
+        const vx = b.x - a.x;
+        const vy = b.y - a.y;
+        const segLen2 = vx * vx + vy * vy;
+        if (segLen2 === 0) {
+          const d = Math.hypot(a.x - fx, a.y - fy);
+          if (d < best) best = d;
+          continue;
+        }
+        const t = Math.max(
+          0,
+          Math.min(
+            1,
+            ((fx - a.x) * vx + (fy - a.y) * vy) / segLen2,
+          ),
+        );
+        const px = a.x + vx * t;
+        const py = a.y + vy * t;
+        const d = Math.hypot(px - fx, py - fy);
+        if (d < best) best = d;
+      }
+      return best;
     },
-    [measurePath],
+    [sampleTable],
   );
 
   const clearTimer = useCallback(() => {
@@ -161,7 +216,9 @@ export default function CustomEdge({
     if (!engaged) return;
     const onMove = (e) => {
       const flow = screenToFlowPosition({ x: e.clientX, y: e.clientY });
-      // 命中容差换算到画布坐标：屏幕像素 / zoom（保证屏幕命中宽度恒定 ±4px）
+      // 屏容差恒定 = (可视化线宽 / 2 + 命中扩展) 像素 → flow 坐标除以 zoom。
+      // 与下方透明 stroke 路径的命中宽度保持一致，避免两种容差基准造成"鼠标停在
+      // 线上却不断 enter/leave 抖动"。
       const tol = (STROKE_WIDTH / 2 + HIT_EXTEND) / (zoom || 1);
       if (distanceToPath(flow.x, flow.y) <= tol) {
         // 仍在有效区域：图标跟随光标（不重置计时）
@@ -177,6 +234,47 @@ export default function CustomEdge({
 
   // 卸载时清理计时器
   useEffect(() => clearTimer, [clearTimer]);
+
+  /**
+   * 全局兜底：在「未 engaged」状态下，任何鼠标移动只要落在本 Edge 容差内，
+   * 就启动悬停计时。这样可以兜住以下场景：
+   *   1. 透明 path 的 mouseenter 因上方节点 / 其它事件层被吞；
+   *   2. 删除按钮刚刚消失、用户原位停留时（这里 engaged 仍为 false）需要再次进入。
+   * 一旦 hovered 标记位，就启计时；engaged 状态由独立的 document.pointermove 维持。
+   */
+  const handleDocPointerMoveIdle = useCallback(
+    (e) => {
+      if (engaged) return;
+      if (hoverDeleteEdgeId === id) return;
+      const flow = screenToFlowPosition({ x: e.clientX, y: e.clientY });
+      const tol = (STROKE_WIDTH / 2 + HIT_EXTEND) / (zoom || 1);
+      if (distanceToPath(flow.x, flow.y) <= tol) {
+        // 等价于 handleAreaEnter，但去掉对 setEngaged / setCursor 的依赖重复
+        setEngaged(true);
+        setCursor(flow);
+        clearTimer();
+        timerRef.current = setTimeout(() => {
+          setHoverDeleteEdgeId(id);
+        }, HOVER_DELAY);
+      }
+    },
+    [
+      engaged,
+      hoverDeleteEdgeId,
+      id,
+      zoom,
+      distanceToPath,
+      screenToFlowPosition,
+      clearTimer,
+      setHoverDeleteEdgeId,
+    ],
+  );
+
+  useEffect(() => {
+    document.addEventListener("pointermove", handleDocPointerMoveIdle);
+    return () =>
+      document.removeEventListener("pointermove", handleDocPointerMoveIdle);
+  }, [handleDocPointerMoveIdle]);
 
   // 删除连线：立即移除并隐藏图标
   const handleDeleteEdge = useCallback(
@@ -212,9 +310,11 @@ export default function CustomEdge({
         }}
       />
 
-      {/* 透明加宽交互路径：命中范围 = 线条 ±4px。
-          strokeWidth 按 1/zoom 补偿，使屏幕命中宽度恒定，缩放后依旧易命中、手感一致。
-          该路径位于 ReactFlow 视口变换层内，自动适配画布的缩放与平移。 */}
+      {/* 透明加宽交互路径：命中范围 = 线条 ±HIT_EXTEND flow 单位（屏容差 ≈
+          (STROKE_WIDTH/2 + HIT_EXTEND) 像素，按 1/zoom 补偿）。
+          该路径位于 ReactFlow 视口变换层内，自动适配画布的缩放与平移。
+          注意：本组件另在 document 上挂了 pointermove 监听做兜底，当本
+          path 的 mouseenter 因上层节点拦截而未触发时，仍能进入悬停状态。 */}
       <path
         d={edgePath}
         fill="none"

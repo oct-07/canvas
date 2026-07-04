@@ -20,6 +20,7 @@ import SideBar from "./SideBar";
 import { getCanvasDetail } from "@/api";
 import useStyleStore from "@/store/styleStore";
 import { getNodeScreenPos } from "@/utils/canvasEditor";
+import { isEditableElement } from "@/utils/dom";
 
 const CanvasContent = () => {
   //自定义连线类型
@@ -337,11 +338,18 @@ const CanvasContent = () => {
         pasteNode(position);
       }
       if (e.key === "Delete" || e.key === "Backspace") {
-        if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
-          return;
-        }
+        // 防止误触：输入框 / Ant 弹层 / contenteditable 内部应自行消费按键
+        if (isEditableElement(e.target)) return;
         const { selectedNodeId } = useCanvasStore.getState();
         if (selectedNodeId) removeNode(selectedNodeId);
+      }
+      // Esc 关闭当前打开的浮窗
+      if (e.key === "Escape") {
+        const { activeNodeId, hideActiveEditor } = useCanvasStore.getState();
+        if (activeNodeId) {
+          hideActiveEditor(activeNodeId);
+          e.preventDefault();
+        }
       }
       if (cmdKey && e.key === "c") {
         const {

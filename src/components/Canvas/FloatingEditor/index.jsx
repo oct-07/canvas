@@ -115,9 +115,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       aspectRatio: aspectRatio || undefined,
     };
     onSubmit(submitData);
-    // 提交后清空输入
-    setPrompt("");
-    setImageUrl("");
+    // 不再清空本地 state：editor.data 已通过 useEffect 回填到 setPrompt/setImageUrl
   };
 
   if (!visible) return null;

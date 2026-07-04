@@ -1,6 +1,7 @@
 import useCanvasStore from "@/store/canvasStore";
 import {
   ArrowUpOutlined,
+  CloudUploadOutlined,
   PictureOutlined,
   UpCircleOutlined,
   VideoCameraOutlined,
@@ -10,9 +11,9 @@ import { useEffect, useRef } from "react";
 
 /**
  * 画布右键菜单组件 - 根据右键目标（画布/节点）显示不同操作
- * 支持添加图片/视频、复制粘贴、删除节点等操作
+ * 支持添加图片/视频/上传素材、复制粘贴、删除节点等操作
  */
-const ContextMenu = ({ onAddImage, onAddVideo, onUpload }) => {
+const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
   const menuRef = useRef(null);
   const {
     contextMenu,
@@ -111,6 +112,14 @@ const ContextMenu = ({ onAddImage, onAddVideo, onUpload }) => {
   };
 
   /**
+   * 在菜单位置添加上传素材节点
+   */
+  const handleAddUpload = () => {
+    onAddUpload?.({ x: contextMenu.x, y: contextMenu.y });
+    hideContextMenu();
+  };
+
+  /**
    * 根据右键目标类型返回对应的菜单项列表
    */
   const getMenuItems = () => {
@@ -128,18 +137,18 @@ const ContextMenu = ({ onAddImage, onAddVideo, onUpload }) => {
           icon: <VideoCameraOutlined />,
           onClick: handleAddVideo,
         },
+        {
+          key: "add-upload",
+          label: "添加上传素材",
+          icon: <CloudUploadOutlined />,
+          onClick: handleAddUpload,
+        },
         { type: "divider" },
         {
           key: "paste",
           label: "粘贴",
           icon: <UpCircleOutlined />,
           onClick: handlePaste,
-        },
-        {
-          key: "upload",
-          label: "上传",
-          icon: <ArrowUpOutlined />,
-          onClick: onUpload,
         },
       ];
     }

@@ -31,6 +31,14 @@ export function uploadMedia(file, extraParams = {}, onProgress) {
       onProgress?.(percent);
     },
   }).then((res) => {
-    return res.code;
+    const url = res.code?.url || res.code?.fullurl;
+    if (!url) {
+      throw new Error("上传失败，未获取到文件地址");
+    }
+    return {
+      url,
+      fullurl: res.code?.fullurl || url,
+      duration: res.code?.duration || 0,
+    };
   });
 }

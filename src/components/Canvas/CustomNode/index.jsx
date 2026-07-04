@@ -9,6 +9,7 @@ import {
 import { Position } from "@xyflow/react";
 import { memo } from "react";
 import ImageNode from "./ImageNode";
+import UploadMediaNode from "./UploadMediaNode";
 import VideoNode from "./VideoNode";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import PlusHandle from "../CustomPoint/PlusHandle";
@@ -147,4 +148,5 @@ export const nodeTypes = {
   ai: CustomNode,
   image: ImageNode,
   video: VideoNode,
+  upload: UploadMediaNode,
 };

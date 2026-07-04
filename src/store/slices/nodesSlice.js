@@ -57,6 +57,21 @@ export const createNodesSlice = (getStore, setStore) => ({
   },
 
   /**
+   * 更新节点 data 属性（用于浮窗编辑数据同步到节点）
+   */
+  updateNodeData: (nodeId, dataUpdates) => {
+    const { saveHistory } = getStore();
+    saveHistory();
+    setStore((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId
+          ? { ...node, data: { ...node.data, ...dataUpdates } }
+          : node
+      ),
+    }));
+  },
+
+  /**
    * 同步节点尺寸（宽高）到 ReactFlow store
    * 当节点 aspect_ratio 变化时调用，使画布内节点盒子同步变化
    * 加入相等性短路（避免无意义 re-render）与历史保存（支持撤销/重做）

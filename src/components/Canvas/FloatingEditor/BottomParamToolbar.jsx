@@ -2,6 +2,7 @@ import { createContent } from "@/api";
 import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import useCanvasStore from "@/store/canvasStore";
 import { buildMediaBody } from "@/utils/generateParams.js";
+import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import {
   getParamChineseName,
   getParamValueChinese,
@@ -61,6 +62,7 @@ const BottomParamToolbar = ({
   const updateNodeEditorData = useCanvasStore(
     (state) => state.setNodeEditorData,
   );
+  const updateNodeData = useCanvasStore((state) => state.updateNodeData);
 
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
   const paramValues = editor?.data || {};
@@ -137,6 +139,13 @@ const BottomParamToolbar = ({
       [propKey]: value,
     };
     updateNodeEditorData(activeNodeId, newEditorData);
+
+    if (propKey === "aspect_ratio") {
+      const size = getAspectRatioSize(value);
+      const width = Math.round((260 * size.width) / size.height);
+      const height = 260;
+      updateNodeData(activeNodeId, { aspect_ratio: value, width, height });
+    }
   };
 
   // 生成参数摘要：每个参数用 span 展示

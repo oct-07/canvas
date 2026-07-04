@@ -2,8 +2,7 @@ import useCanvasStore from "@/store/canvasStore";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { PictureOutlined } from "@ant-design/icons";
 import { Position } from "@xyflow/react";
-import { memo, useEffect, useMemo, useState } from "react";
-import { useReactFlow } from "@xyflow/react";
+import { memo, useEffect, useMemo } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import FloatingEditor from "../FloatingEditor";
@@ -15,14 +14,15 @@ const ImageNode = memo(({ id, data, selected }) => {
   const { isTarget, tiltX, tiltY, canConnect } = useNodeMagnet(id);
   const magnetColor = canConnect ? "#52c41a" : "#ff4d4f";
   const hideActiveEditor = useCanvasStore((state) => state.hideActiveEditor);
-  const { getViewport } = useReactFlow();
 
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
   const draggingNodeId = useCanvasStore((state) => state.draggingNodeId);
   const editor = nodeEditors[id];
   const isThisEditorOpen = activeNodeId === id && !!editor?.visible;
+  // 当前节点正在被拖动 → 浮窗强制隐藏（不卸载，保留内部输入状态）
   const isThisNodeDragging = draggingNodeId === id;
+  // 边框高亮优先级：磁吸命中 > 当前激活节点 > React Flow 选中 > 默认
   const isActive = isThisEditorOpen || activeNodeId === id || selected;
 
   const nodeData = editor?.data ?? data ?? {};
@@ -38,20 +38,7 @@ const ImageNode = memo(({ id, data, selected }) => {
     };
   }, [aspectRatio]);
 
-  // 节点屏幕坐标（锚点 = 节点底部中央），用于 FloatingEditor 定位
-  const [floatingPos, setFloatingPos] = useState({ left: 0, top: 0 });
-  useEffect(() => {
-    const viewport = getViewport();
-    const { x: vx, y: vy, zoom } = viewport;
-    const screenLeft = vx + (data?.position?.x ?? 0) * zoom;
-    const screenTop = vy + (data?.position?.y ?? 0) * zoom;
-    setFloatingPos({
-      left: screenLeft + IMAGE_NODE_WIDTH / 2,
-      top: screenTop + previewStyle.height,
-    });
-  }, [data?.position, getViewport, previewStyle.height]);
-
-  // 同步节点尺寸到 ReactFlow store
+  // 同步节点尺寸到 ReactFlow store，使画布盒子跟随比例变化
   useEffect(() => {
     useCanvasStore
       .getState()
@@ -143,19 +130,38 @@ const ImageNode = memo(({ id, data, selected }) => {
         offsetKey="right"
       />
 
-      {/* 浮窗常驻挂载，位置由 position prop 驱动，不可见时由外层控制 */}
-      <FloatingEditor
-        visible={isThisEditorOpen && !isThisNodeDragging}
-        position={floatingPos}
-        nodeType="image"
-        data={nodeData}
-        onSubmit={({ prompt, style, params, imageUrl }) => {
-          const payload = { prompt, style, params };
-          if (imageUrl) payload.imageUrl = imageUrl;
-          useCanvasStore.getState().updateNodeData(id, payload);
+      {/* 节点浮窗：常驻挂载，仅在打开时显示；当前节点被拖动时强制透明，
+          保留组件内部 useState（避免提交后输入丢失，与 P0 评审 2.2 同源修复） */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          top: "100%",
+          marginTop: 8,
+          zIndex: 9999,
+          opacity: isThisEditorOpen && !isThisNodeDragging ? 1 : 0,
+          pointerEvents:
+            isThisEditorOpen && !isThisNodeDragging ? "auto" : "none",
+          visibility:
+            isThisEditorOpen || isThisNodeDragging ? "visible" : "hidden",
         }}
-        onClose={() => hideActiveEditor(id)}
-      />
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onMouseUp={(e) => e.stopPropagation()}
+      >
+        <FloatingEditor
+          visible
+          position={{ left: 0, top: 0 }}
+          nodeType="image"
+          data={nodeData}
+          onSubmit={({ prompt, style, params, imageUrl }) => {
+            const payload = { prompt, style, params };
+            if (imageUrl) payload.imageUrl = imageUrl;
+            useCanvasStore.getState().updateNodeData(id, payload);
+          }}
+          onClose={() => hideActiveEditor(id)}
+        />
+      </div>
     </div>
   );
 });

@@ -99,7 +99,6 @@ export const createUISlice = (getStore, setStore) => ({
           nodeType,
           position: null,
           data: null,
-          isFullScreen: false,
         },
       },
     }));
@@ -142,18 +141,6 @@ export const createUISlice = (getStore, setStore) => ({
         nodeEditors: {
           ...state.nodeEditors,
           [nodeId]: { ...current, data },
-        },
-      };
-    });
-  },
-  updateNodeEditorFullScreen: (nodeId, isFullScreen) => {
-    setStore((state) => {
-      const current = state.nodeEditors[nodeId];
-      if (!current) return state;
-      return {
-        nodeEditors: {
-          ...state.nodeEditors,
-          [nodeId]: { ...current, isFullScreen },
         },
       };
     });

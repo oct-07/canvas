@@ -296,13 +296,10 @@ export default function CustomEdge({
   const handleEdgeClick = useCallback(
     (e) => {
       e.stopPropagation();
-      console.log("[v0] edge click", id, "wasActive=", isActive);
       setActiveEdgeId(isActive ? null : id);
     },
     [isActive, id, setActiveEdgeId],
   );
-
-  console.log("[v0] edge render", id, "isActive=", isActive, "engaged=", engaged);
 
   return (
     <>

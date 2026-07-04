@@ -8,40 +8,47 @@ import { PlusOutlined, CloseOutlined } from "@ant-design/icons";
 import useMagnetStore from "./useMagnetStore";
 
 const MagnetHandle = () => {
-  const active = useMagnetStore((s) => s.active);
-  const showHandle = useMagnetStore((s) => s.showHandle);
-  const handleClient = useMagnetStore((s) => s.handleClient);
-  const canConnect = useMagnetStore((s) => s.canConnect);
+  // const active = useMagnetStore((s) => s.active);
+  // const showHandle = useMagnetStore((s) => s.showHandle);
+  // const handleClient = useMagnetStore((s) => s.handleClient);
+  // const canConnect = useMagnetStore((s) => s.canConnect);
 
-  if (!active || !showHandle || !handleClient) return null;
+  // if (!active || !showHandle || !handleClient) return null;
 
-  const color = canConnect ? "#52c41a" : "#ff4d4f";
+  // const color = canConnect ? "#52c41a" : "#ff4d4f";
 
-  return (
-    <div
-      style={{
-        position: "fixed",
-        left: handleClient.x,
-        top: handleClient.y,
-        width: 28,
-        height: 28,
-        transform: "translate(-50%, -50%)",
-        borderRadius: "50%",
-        background: color,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#fff",
-        fontSize: 14,
-        boxShadow: `0 0 0 4px ${color}33, 0 2px 8px rgba(0,0,0,0.4)`,
-        pointerEvents: "none",
-        zIndex: 10000,
-        transition: "background 0.12s ease, box-shadow 0.12s ease",
-      }}
-    >
-      {canConnect ? <PlusOutlined /> : <CloseOutlined />}
-    </div>
-  );
+  // return (
+  //   <div
+  //     style={{
+  //       position: "fixed",
+  //       left: handleClient.x,
+  //       top: handleClient.y,
+  //       width: 28,
+  //       height: 28,
+  //       transform: "translate(-50%, -50%)",
+  //       borderRadius: "50%",
+  //       background: color,
+  //       display: "flex",
+  //       alignItems: "center",
+  //       justifyContent: "center",
+  //       color: "#fff",
+  //       fontSize: 14,
+  //       boxShadow: `0 0 0 4px ${color}33, 0 2px 8px rgba(0,0,0,0.4)`,
+  //       pointerEvents: "none",
+  //       zIndex: 10000,
+  //       transition: "background 0.12s ease, box-shadow 0.12s ease",
+  //     }}
+  //   >
+  //     {canConnect ? <PlusOutlined /> : <CloseOutlined />}
+  //   </div>
+  // );
+
+
+
+  // 关闭磁吸浮动加号 / 红色 × 浮标的 UI 渲染。
+  // 命中状态仍由 useMagnetStore 写入，节点自身的绿色边框 / 3D 倾斜不受影响，
+  // onConnectEnd 建边与 validateConnection 校验逻辑保持原状。
+  return null;
 };
 
 export default MagnetHandle;

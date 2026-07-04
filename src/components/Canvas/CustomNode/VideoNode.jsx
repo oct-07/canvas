@@ -80,8 +80,7 @@ const VideoNode = memo(({ id, data, selected }) => {
       <PlusHandle
         type="target"
         position={Position.Left}
-        id="input"
-        color="#722ed1"
+        id="input" 
         offsetKey="left"
       />
 
@@ -172,7 +171,6 @@ const VideoNode = memo(({ id, data, selected }) => {
         type="source"
         position={Position.Right}
         id="output"
-        color="#722ed1"
         offsetKey="right"
       />
 

@@ -75,7 +75,6 @@ const ImageNode = memo(({ id, data, selected }) => {
         type="target"
         position={Position.Left}
         id="input"
-        color="#1890ff"
         offsetKey="left"
       />
 
@@ -128,7 +127,6 @@ const ImageNode = memo(({ id, data, selected }) => {
         type="source"
         position={Position.Right}
         id="output"
-        color="#1890ff"
         offsetKey="right"
       />
 

@@ -204,10 +204,10 @@ const BottomParamToolbar = ({
 
   const getConsumePoint = () => {
     if (!currentSelectModel?.point_list || propList.length === 0) {
-      console.log("[积分计算] 无模型/无积分配置/无参数", {
-        currentSelectModel,
-        propList,
-      });
+      // console.log("[积分计算] 无模型/无积分配置/无参数", {
+      //   currentSelectModel,
+      //   propList,
+      // });
       return 0;
     }
     const valueIds = [];

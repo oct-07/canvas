@@ -52,14 +52,13 @@ const ImageNode = memo(({ id, data, selected }) => {
         width: previewStyle.width,
         height: previewStyle.height,
         aspectRatio: previewStyle.aspectRatio,
-        background: "#262626",
         borderRadius: 12,
+        overflow: "visible",
         border: isTarget
           ? `2px solid ${magnetColor}`
           : isActive
             ? "2px solid #177ddc"
             : "1px solid #303030",
-        overflow: "visible",
         boxShadow: isTarget
           ? `0 0 0 2px ${magnetColor}66, 0 8px 24px ${magnetColor}44`
           : isActive
@@ -73,58 +72,66 @@ const ImageNode = memo(({ id, data, selected }) => {
           : "none",
       }}
     >
+      {/* 内容层：背景图+占位图标+标题，统一被圆角裁剪 */}
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          borderRadius: 12,
+          overflow: "hidden",
+          background: nodeData.url || nodeData.thumbnail
+            ? `url(${nodeData.url || nodeData.thumbnail}) center/cover no-repeat`
+            : "#1f1f1f",
+        }}
+      >
+        {!(nodeData.url || nodeData.thumbnail) && (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <PictureOutlined style={{ fontSize: 46, color: "#555" }} />
+          </div>
+        )}
+
+        <div
+          style={{
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            padding: "6px 10px",
+            borderRadius: "0 0 12px 12px",
+            background:
+              "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
+          }}
+        >
+          <span
+            style={{
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 500,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              display: "block",
+            }}
+          >
+            {nodeData.name}
+          </span>
+        </div>
+      </div>
+
       <PlusHandle
         type="target"
         position={Position.Left}
         id="input"
         offsetKey="left"
       />
-
-      <div
-        style={{
-          height: previewStyle.height,
-          background: "#1f1f1f",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: "12px 12px 0 0",
-          overflow: "hidden",
-          transition: "height 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
-        }}
-      >
-        {nodeData.url || nodeData.thumbnail ? (
-          <div
-            style={{
-              width: "100%",
-              height: "100%",
-              background: `url(${nodeData.url || nodeData.thumbnail}) center/cover no-repeat`,
-            }}
-          />
-        ) : (
-          <PictureOutlined style={{ fontSize: 46, color: "#555" }} />
-        )}
-      </div>
-      <div
-        style={{
-          padding: "6px 10px",
-          background:
-            "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
-        }}
-      >
-        <span
-          style={{
-            color: "#fff",
-            fontSize: 12,
-            fontWeight: 500,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            display: "block",
-          }}
-        >
-          {nodeData.name}
-        </span>
-      </div>
 
       <PlusHandle
         type="source"

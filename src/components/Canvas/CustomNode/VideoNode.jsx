@@ -32,7 +32,7 @@ const VideoNode = memo(({ id, data, selected }) => {
   const isActive = isThisEditorOpen || activeNodeId === id || selected;
 
   const nodeData = editor?.data ?? data ?? {};
-  const aspectRatio = nodeData.aspect_ratio || DEFAULT_ASPECT_RATIO;
+  const aspectRatio = nodeData.aspect_ratio ?? DEFAULT_ASPECT_RATIO;
 
   const previewStyle = useMemo(() => {
     const size = getAspectRatioSize(aspectRatio);
@@ -58,14 +58,13 @@ const VideoNode = memo(({ id, data, selected }) => {
         width: previewStyle.width,
         height: previewStyle.height,
         aspectRatio: previewStyle.aspectRatio,
-        background: "#262626",
-        borderRadius: "12px",
+        borderRadius: 12,
+        overflow: "visible",
         border: isTarget
           ? `2px solid ${magnetColor}`
           : isActive
             ? "2px solid #177ddc"
             : "1px solid #303030",
-        overflow: "visible",
         boxShadow: isTarget
           ? `0 0 0 2px ${magnetColor}66, 0 8px 24px ${magnetColor}44`
           : isActive
@@ -79,24 +78,14 @@ const VideoNode = memo(({ id, data, selected }) => {
           : "none",
       }}
     >
-      {/* 左侧 Input 端口 - 接收图片或视频输入 */}
-      <PlusHandle
-        type="target"
-        position={Position.Left}
-        id="input" 
-        offsetKey="left"
-      />
-
+      {/* 内容层：背景图+播放按钮+渐变条，统一被圆角裁剪；浮窗独立在 overflow: visible 的父容器下，不被裁剪 */}
       <div
         style={{
-          height: previewStyle.height,
-          background: "#1f1f1f",
-          position: "relative",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
+          position: "absolute",
+          inset: 0,
+          borderRadius: 12,
           overflow: "hidden",
-          borderRadius: "10px",
+          background: "#1f1f1f",
           transition: "height 0.28s cubic-bezier(0.22, 1, 0.36, 1)",
         }}
       >
@@ -112,13 +101,11 @@ const VideoNode = memo(({ id, data, selected }) => {
 
         <div
           style={{
-            width: "48px",
-            height: "48px",
-            borderRadius: "50%",
+            position: "absolute",
+            inset: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 1,
           }}
         >
           <PlayCircleOutlined style={{ color: "#555555", fontSize: "50px" }} />
@@ -135,10 +122,8 @@ const VideoNode = memo(({ id, data, selected }) => {
               "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)",
             display: "flex",
             justifyContent: "flex-end",
-            opacity: isActive ? 1 : 0,
-            transition: "opacity 0.2s",
           }}
-        ></div>
+        />
 
         <div
           style={{
@@ -147,6 +132,7 @@ const VideoNode = memo(({ id, data, selected }) => {
             left: 0,
             right: 0,
             padding: "8px",
+            borderRadius: "0 0 12px 12px",
             background:
               "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
             display: "flex",
@@ -170,7 +156,13 @@ const VideoNode = memo(({ id, data, selected }) => {
         </div>
       </div>
 
-      {/* 右侧 Output 端口 - 输出视频 */}
+      <PlusHandle
+        type="target"
+        position={Position.Left}
+        id="input"
+        offsetKey="left"
+      />
+
       <PlusHandle
         type="source"
         position={Position.Right}

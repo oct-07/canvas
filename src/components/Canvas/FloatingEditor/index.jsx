@@ -1,5 +1,4 @@
 import useCanvasStore from "@/store/canvasStore";
-import { useViewport } from "@xyflow/react";
 import { ConfigProvider, theme } from "antd";
 import { useEffect, useMemo, useState } from "react";
 
@@ -15,8 +14,6 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
-  // 实时缩放比：节点在画布内的高度增量需按 zoom 换算到屏幕像素
-  const { zoom } = useViewport();
 
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -57,17 +54,20 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
     setParams(data.params ?? params);
   }, [activeNodeId]);
 
-  // 节点因比例变化产生的高度增量（画布坐标），用于让提示词框同步下移，
-  // 始终与节点底边保持默认间距，避免高比例时节点与提示词框重叠。
+  // 让提示词框随节点高度变化同步位移，始终与节点底边保持默认间距，避免重叠或间距忽大忽小。
   // 图片/视频节点默认宽度均为 260，默认比例 1:1 → 默认高度 260。
+  // 关键：提示词框以 position:fixed 定位，其包含块是带 transform 的节点本身，
+  // 因此 `top: 50%` 已随节点高度变化贡献了「一半」的位移，这里只需再补另一半，
+  // 即偏移量 =（当前高度 - 默认高度）/ 2（可正可负），叠加后恰好等于节点底边的
+  // 实际位移量，从而保证任意比例（竖版更高 / 横版更矮）、任意缩放下间距都与默认完全一致。
   const NODE_WIDTH = 260;
   const NODE_DEFAULT_HEIGHT = 260;
-  const nodeHeightDelta = useMemo(() => {
+  const nodeHeightOffset = useMemo(() => {
     const aspectRatio = editor?.data?.aspect_ratio;
     if (!aspectRatio) return 0;
     const size = getAspectRatioSize(aspectRatio);
     const height = Math.round((NODE_WIDTH * size.height) / size.width);
-    return Math.max(0, height - NODE_DEFAULT_HEIGHT);
+    return (height - NODE_DEFAULT_HEIGHT) / 2;
   }, [editor?.data?.aspect_ratio]);
 
   // 弹窗定位样式
@@ -101,15 +101,17 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       };
     }
 
-    console.log("[v0] editor pos delta=", nodeHeightDelta, "zoom=", zoom, "ratio=", editor?.data?.aspect_ratio);
     return {
       ...baseStyle,
-      // 基础位置 + 节点高度增量（按 zoom 换算为屏幕像素），使提示词框随节点变高同步下移
-      top: `calc(50% + 160px + ${nodeHeightDelta * zoom}px)`,
+      // 基础位置 + 节点高度增量的一半（节点局部坐标）：
+      // 与包含块 `top:50%` 贡献的另一半叠加，恰好等于节点底边的实际位移，从而保持
+      // 提示词框与节点底边的间距恒定。整个提示词框位于缩放后的画布视口内，会随
+      // 画布 zoom 一同缩放，因此这里无需再乘 zoom——间距会与节点一样自然随缩放变化。
+      top: `calc(50% + 160px + ${nodeHeightOffset}px)`,
       width: 900,
       height: 400,
     };
-  }, [visible, isFullScreen, nodeHeightDelta, zoom, editor?.data?.aspect_ratio]);
+  }, [visible, isFullScreen, nodeHeightOffset]);
 
   // 提交生成
   const handleSend = () => {

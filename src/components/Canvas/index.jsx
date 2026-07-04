@@ -12,6 +12,7 @@ import useCanvasStore, { validateConnection } from "@/store/canvasStore";
 import { resolveAssetMediaType } from "@/utils/modelAssetLimit";
 import CanvasHeader from "./CanvasHeader";
 import ContextMenu from "./ContextMenu";
+import CustomConnectionLine from "./CustomConnectionLine";
 import CustomEdge from "./CustomEdge";
 import { nodeTypes } from "./CustomNode";
 import MagnetHandle from "./CustomPoint/MagnetHandle";
@@ -607,6 +608,7 @@ const CanvasContent = () => {
       <div style={flowWrapperStyle}>
         <ReactFlow
           edgeTypes={edgeTypes}
+          connectionLineComponent={CustomConnectionLine}
           minZoom={0.5}
           maxZoom={3.0}
           nodes={nodes}

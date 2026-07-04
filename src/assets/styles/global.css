@@ -20,3 +20,33 @@
   box-shadow: none ;
   border: none;
 }
+
+/* ============ 连接线流光效果 ============ */
+/* 通过匀速平移 stroke-dashoffset，让虚线（一节一节的流光）沿路径由起点流向终点。
+   位移量需与一个「实体+间隔」周期长度(FLOW_CELL)一致，保证循环无缝衔接。 */
+@keyframes rfEdgeFlow {
+  from {
+    stroke-dashoffset: var(--rf-flow-cell, 32);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.rf-flow-dash {
+  animation: rfEdgeFlow var(--rf-flow-duration, 1s) linear infinite;
+}
+
+/* 入场：流光淡入，避免选中/悬停瞬间生硬出现 */
+.rf-flow-light {
+  animation: rfEdgeFlowFade 0.18s ease-out both;
+}
+
+@keyframes rfEdgeFlowFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

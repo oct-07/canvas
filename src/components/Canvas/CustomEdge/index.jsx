@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // 引入全局仓库
 import useCanvasStore from "@/store/canvasStore";
+import FlowingLight from "./FlowingLight";
 
 // ========== 可调常量 ==========
 const HIT_EXTEND = 16; // 命中范围：向线条两侧各扩展（flow 单位），屏宽容差 ≈ (STROKE_WIDTH/2 + HIT_EXTEND) / zoom 像素
@@ -295,10 +296,13 @@ export default function CustomEdge({
   const handleEdgeClick = useCallback(
     (e) => {
       e.stopPropagation();
+      console.log("[v0] edge click", id, "wasActive=", isActive);
       setActiveEdgeId(isActive ? null : id);
     },
     [isActive, id, setActiveEdgeId],
   );
+
+  console.log("[v0] edge render", id, "isActive=", isActive, "engaged=", engaged);
 
   return (
     <>
@@ -317,6 +321,11 @@ export default function CustomEdge({
             : { strokeWidth: STROKE_WIDTH, pointerEvents: "none" }
         }
       />
+
+      {/* 流光：选中（点击）或悬停连线时，沿曲线由起点流向终点 */}
+      {(isActive || engaged) && (
+        <FlowingLight path={edgePath} edgeId={id} />
+      )}
 
       {/* 透明加宽交互路径：命中范围 = 线条 ±HIT_EXTEND flow 单位（屏容差 ≈
           (STROKE_WIDTH/2 + HIT_EXTEND) 像素，按 1/zoom 补偿）。

@@ -101,6 +101,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       };
     }
 
+    console.log("[v0] editor pos delta=", nodeHeightDelta, "zoom=", zoom, "ratio=", editor?.data?.aspect_ratio);
     return {
       ...baseStyle,
       // 基础位置 + 节点高度增量（按 zoom 换算为屏幕像素），使提示词框随节点变高同步下移
@@ -108,7 +109,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       width: 900,
       height: 400,
     };
-  }, [visible, isFullScreen, nodeHeightDelta, zoom]);
+  }, [visible, isFullScreen, nodeHeightDelta, zoom, editor?.data?.aspect_ratio]);
 
   // 提交生成
   const handleSend = () => {

@@ -4,6 +4,7 @@ import {
   ReactFlow,
   ReactFlowProvider,
   useReactFlow,
+  useStoreApi,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -31,6 +32,7 @@ const CanvasContent = () => {
     [],
   );
   const { screenToFlowPosition } = useReactFlow();
+  const storeApi = useStoreApi();
 
   // 拖动前快照：记录本次拖动开始前，被拖节点是否已经打开了提示词框
   // draggedId: 当前正在拖动的节点id
@@ -148,10 +150,18 @@ const CanvasContent = () => {
   const handleNodeContextMenu = useCallback(
     (event, node) => {
       event.preventDefault();
+      // 同步 React Flow 内部选中态：其他节点 deselect，触发节点 select
+      storeApi.setState((state) => ({
+        nodes: state.nodes.map((n) => ({
+          ...n,
+          selected: n.id === node.id,
+        })),
+      }));
+      // 同时写业务态 selectedNodeId（不触发浮窗打开）
       useCanvasStore.getState().setSelectedNode(node.id);
       showContextMenu(event.clientX, event.clientY, "node", node.id);
     },
-    [showContextMenu],
+    [storeApi, showContextMenu],
   );
 
   const handleEdgeContextMenu = useCallback(
@@ -366,16 +376,7 @@ const CanvasContent = () => {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    undo,
-    redo,
-    canUndo,
-    canRedo,
-    clipboard,
-    pasteNode,
-    screenToFlowPosition,
-    removeNode,
-  ]);
+  }, []);
 
   const handleDragOver = useCallback((e) => {
     e.preventDefault();

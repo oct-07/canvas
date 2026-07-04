@@ -23,13 +23,15 @@
 
 /* ============ 连接线「流星」效果 ============ */
 /* 匀速平移 stroke-dashoffset，让唯一一束高光（流星）沿路径由起点滑向终点后循环。
-   路径已用 pathLength=1 归一化，故位移量 = 流星长 + 间隔1（--rf-meteor-period）。 */
+   路径已用 pathLength=1 归一化。流星由多层「同心居中、长度递减」的虚线叠加而成，
+   叠加处（中段）最亮、两端渐隐，形成透明度渐变；每层用各自的 from/to 变量做居中偏移，
+   且各层位移量恒等于一个周期，保证所有层完全同步、呈现为「一束」。 */
 @keyframes rfEdgeMeteor {
   from {
-    stroke-dashoffset: var(--rf-meteor-period, 1.22);
+    stroke-dashoffset: var(--rf-off-from, 1.2);
   }
   to {
-    stroke-dashoffset: 0;
+    stroke-dashoffset: var(--rf-off-to, 0);
   }
 }
 

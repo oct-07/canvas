@@ -1,5 +1,5 @@
-// 后端返回的prop_value_id 作为key，和后端数据完全对齐
-// 同时支持按 label 索引（如 "16:9"），供前端直接存储使用
+// 后端返回的 prop_value_id 作为 key，和后端数据完全对齐
+// 找不到对应 key 时回退到 1:1（227）并打 warn
 const ASPECT_RATIO_MAP = {
   242: { label: "auto", width: 1024, height: 1024 },
   227: { label: "1:1", width: 1024, height: 1024 },
@@ -28,22 +28,19 @@ const ASPECT_RATIO_BY_LABEL = Object.values(ASPECT_RATIO_MAP).reduce(
   {},
 );
 
-export function getAspectRatioSize(valueOrLabel) {
-  // 优先按 valueId 查找，再按 label 查找，最后回退到 1:1
-  const match =
-    ASPECT_RATIO_MAP[valueOrLabel] ||
-    ASPECT_RATIO_BY_LABEL[valueOrLabel] ||
-    ASPECT_RATIO_MAP["227"];
-  console.log(`[getAspectRatioSize] 传入valueOrLabel:${valueOrLabel} 匹配配置:`, match);
+export function getAspectRatioSize(valueId) {
+  if (valueId == null) return ASPECT_RATIO_MAP["227"];   // falsy 兜底
+  const match = ASPECT_RATIO_MAP[valueId];
+  if (!match) {
+    console.warn(`[getAspectRatioSize] 未知的 aspect_ratio key: ${valueId}，已回退到 1:1`);
+    return ASPECT_RATIO_MAP["227"];
+  }
   return match;
 }
 
-// 新增：直接返回宽/高比例字符串，给CSS aspectRatio 使用
-export function getAspectRatioStr(valueOrLabel) {
-  const size = getAspectRatioSize(valueOrLabel);
-  const ratioStr = `${size.width} / ${size.height}`;
-  console.log(`[getAspectRatioStr] label:${size.label} 比例字符串:${ratioStr}`);
-  return ratioStr;
+export function getAspectRatioStr(valueId) {
+  const size = getAspectRatioSize(valueId);
+  return `${size.width} / ${size.height}`;
 }
 
 export default ASPECT_RATIO_MAP;

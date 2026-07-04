@@ -14,7 +14,7 @@ import {
   StarOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, message, Popover, Radio, Space, Switch } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 // 比例数据源：固定 key、展示文案、宽高比值
 // 底层公式：height = width ÷ (w / h)
@@ -78,41 +78,21 @@ const BottomParamToolbar = ({
   // 积分映射表
   const pointMap = currentSelectModel?.point_list || {};
 
-  // 比例选中状态：优先从已保存参数里恢复
-  const [currentRatio, setCurrentRatio] = useState(
-    paramValues.aspect_ratio || "auto",
+  // 比例选中状态：优先从已保存参数里恢复；统一存为字符串与 RATIO_LIST.key 对齐
+  const [currentRatio, setCurrentRatio] = useState(() =>
+    paramValues.aspect_ratio == null ? "auto" : String(paramValues.aspect_ratio),
   );
   // 提交加载状态
   const [submitting, setSubmitting] = useState(false);
 
-  // 同步外部 paramValues 变化到比例状态
-  useEffect(() => {
-    if (paramValues?.aspect_ratio !== undefined) {
-      setCurrentRatio(paramValues.aspect_ratio);
-    }
-  }, [paramValues?.aspect_ratio]);
-
-  // 节点首次打开且 modelList 加载完成后，自动填入第一个模型 + 第一个参数
-  const initRef = useRef(false);
-  useEffect(() => {
-    initRef.current = false;
-  }, [activeNodeId]);
-
-  useEffect(() => {
-    console.log("[Init] trigger", {
-      activeNodeId,
-      hasEditor: !!editor,
-      modelListLen: modelList.length,
-      hasModelId: !!paramValues.model_id,
-      initRef: initRef.current,
-    });
+  // 节点首次打开时自动填入第一个模型 + 默认参数（时长/比例/分辨率等）
+  // 幂等保护：节点 data 已有 model_id 时跳过；不再用模块级 Set 记录节点 ID，
+  // 避免跨生命周期误判导致"第二次触发"参数展示丢失。
+  const initNodeDefaults = () => {
     if (!activeNodeId || !editor || modelList.length === 0) return;
     if (paramValues.model_id) return;
-    if (initRef.current) return;
-    initRef.current = true;
 
     const firstModel = modelList[0];
-    console.log("[Init] firstModel", firstModel);
     if (!firstModel) return;
 
     const newData = {
@@ -125,25 +105,29 @@ const BottomParamToolbar = ({
         Array.isArray(prop.prop_values_list) &&
         prop.prop_values_list.length > 0
       ) {
-        const firstVal = prop.prop_values_list[0];
-        // aspect_ratio 使用稳定的 label 存储，避免后端 prop_value_id 在不同模型下不一致
-        if (prop.prop_str === "aspect_ratio") {
-          newData[prop.prop_str] = firstVal.prop_value_name || firstVal.prop_value_id;
-        } else {
+        // 仅当节点 data 中没有该 prop 的值时才写入默认值，
+        // 防止覆盖从编辑器回填的旧值
+        if (newData[prop.prop_str] === undefined) {
+          const firstVal = prop.prop_values_list[0];
           newData[prop.prop_str] = firstVal.prop_value_id;
         }
-        console.log(
-          "[Init] set",
-          prop.prop_str,
-          "=",
-          newData[prop.prop_str],
-          firstVal.prop_value_name,
-        );
       }
     });
-    console.log("[Init] newData", newData);
     updateNodeEditorData(activeNodeId, newData);
-  }, [activeNodeId, editor, modelList]);
+  };
+
+  // 主触发：节点切换时立即尝试初始化
+  useEffect(() => {
+    initNodeDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeNodeId]);
+
+  // 兜底：modelList 异步到达后重新尝试初始化（覆盖 loadModelSkuParams
+  // 尚未完成时首次打开的场景）
+  useEffect(() => {
+    initNodeDefaults();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelList.length]);
 
   // 参数修改回调
   const handleParamChange = (propKey, value) => {
@@ -328,15 +312,16 @@ const BottomParamToolbar = ({
           {/* 比例选择网格：5 列布局 */}
           <div style={ratioGridStyle}>
             {options.map((opt) => {
-              const isSelected = currentRatio === opt.key;
+              // prop_value_id 后端可能是数字/字符串，RATIO_LIST.key 固定字符串；
+              // 统一 String 比较，避免严格相等导致选中态失效
+              const isSelected = String(currentRatio) === String(opt.key);
               return (
                 <div
                   key={opt.value}
                   style={getButtonStyle(isSelected)}
                   onClick={() => {
-                    setCurrentRatio(opt.key);
-                    // 保存稳定的 label（如 "16:9"）到 editor.data，避免后端 prop_value_id 在不同模型下不一致导致尺寸不更新
-                    handleParamChange("aspect_ratio", opt.label);
+                    setCurrentRatio(String(opt.key));
+                    handleParamChange("aspect_ratio", opt.value);
                   }}
                 >
                   {/* 比例预览小图标：宽度固定 20px，高度由 aspect-ratio 自动计算 */}

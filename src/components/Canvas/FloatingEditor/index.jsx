@@ -42,7 +42,9 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const [cameraMode, setCameraMode] = useState(false);
   const [imageCount, setImageCount] = useState(1);
 
-  // 编辑数据回填
+  // 编辑数据回填（仅在 activeNodeId 变化时执行，避免 BottomParamToolbar 的
+  // handleParamChange 副作用覆盖用户实时输入；与下游 PromptInputArea 的
+  // useEffect([html]) 联动，根本解决"切比例时输入框跳回旧值"的体验问题）
   useEffect(() => {
     if (!editor?.data) return;
     const data = editor.data;
@@ -50,7 +52,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
     setStyleValue(data.style ?? "default");
     setImageUrl(data.imageUrl ?? "");
     setParams(data.params ?? params);
-  }, [editor?.data]);
+  }, [activeNodeId]);
 
   // 弹窗定位样式
   const wrapperStyle = useMemo(() => {
@@ -201,6 +203,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
 
         {/* 底部全部参数工具栏 */}
         <BottomParamToolbar
+          key={activeNodeId}
           nodeType={nodeType}
           model={model}
           onChangeModel={setModel}

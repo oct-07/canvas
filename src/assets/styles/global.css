@@ -21,27 +21,19 @@
   border: none;
 }
 
-/* ============ 连接线流光效果 ============ */
-/* 通过匀速平移 stroke-dashoffset，让虚线（一节一节的流光）沿路径由起点流向终点。
-   位移量需与一个「实体+间隔」周期长度(FLOW_CELL)一致，保证循环无缝衔接。 */
-@keyframes rfEdgeFlow {
+/* ============ 连接线「流星」效果 ============ */
+/* 匀速平移 stroke-dashoffset，让唯一一束高光（流星）沿路径由起点滑向终点后循环。
+   路径已用 pathLength=1 归一化，故位移量 = 流星长 + 间隔1（--rf-meteor-period）。 */
+@keyframes rfEdgeMeteor {
   from {
-    stroke-dashoffset: var(--rf-flow-cell, 32);
+    stroke-dashoffset: var(--rf-meteor-period, 1.22);
   }
   to {
     stroke-dashoffset: 0;
   }
 }
 
-.rf-flow-dash {
-  animation: rfEdgeFlow var(--rf-flow-duration, 1s) linear infinite;
-}
-
-/* 入场：流光淡入，避免选中/悬停瞬间生硬出现 */
-.rf-flow-light {
-  animation: rfEdgeFlowFade 0.18s ease-out both;
-}
-
+/* 入场淡入，避免选中 / 悬停瞬间生硬出现 */
 @keyframes rfEdgeFlowFade {
   from {
     opacity: 0;
@@ -49,4 +41,15 @@
   to {
     opacity: 1;
   }
+}
+
+.rf-flow-light {
+  animation: rfEdgeFlowFade 0.18s ease-out both;
+}
+
+/* 流星：同时运行「持续滑动」与「入场淡入」两个动画 */
+.rf-meteor {
+  animation:
+    rfEdgeMeteor var(--rf-meteor-duration, 1.6s) linear infinite,
+    rfEdgeFlowFade 0.18s ease-out both;
 }

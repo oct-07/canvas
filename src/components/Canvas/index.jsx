@@ -102,11 +102,26 @@ const CanvasContent = () => {
     // 获取store全部方法
     const canvasStore = useCanvasStore.getState();
 
+    // 先设置 canvasId（用于本地存储）
+    canvasStore.setCanvasMeta({
+      canvasId,
+      canvasName: "加载中...",
+      globalStyle: "",
+    });
+
+    // 立即检查并加载本地数据（无需等待网络）
+    const localData = canvasStore.loadFromLocal();
+    if (localData) {
+      console.log("[Canvas] 从本地加载画布数据:", localData.nodes?.length, "个节点");
+    }
+
+    // 然后从网络获取最新元信息
     const loadCanvasDetail = async () => {
       try {
         const res = await getCanvasDetail({ canvas_id: canvasId });
         const detail = res;
 
+        // 更新元信息（如果本地有数据，已在上面加载）
         canvasStore.setCanvasMeta({
           canvasId,
           canvasName: detail.canvas_name,
@@ -114,10 +129,28 @@ const CanvasContent = () => {
         });
       } catch (err) {
         console.error("加载画布详情失败：", err);
+        // 网络失败时，如果本地没有数据，画布名称保持"加载中..."
       }
     };
 
     loadCanvasDetail();
+  }, []);
+
+  // 页面初始化完成后启用自动保存
+  const initCompleteRef = useRef(false);
+  useEffect(() => {
+    if (initCompleteRef.current) return;
+    initCompleteRef.current = true;
+
+    // 延迟启用，确保所有初始化数据加载完成
+    setTimeout(() => {
+      const canvasStore = useCanvasStore.getState();
+      const canvasId = new URLSearchParams(window.location.search).get("canvas_id");
+      if (canvasId) {
+        canvasStore.enableAutoSave?.();
+        console.log("[Canvas] 自动保存已启用");
+      }
+    }, 1000);
   }, []);
   const handleConnect = useCallback(
     (connection) => {

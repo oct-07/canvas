@@ -3,6 +3,29 @@
  */
 import { applyEdgeChanges } from '@xyflow/react'
 import { generateId } from '@/utils/common'
+import { canvasStorage } from '@/utils/canvasStorage'
+
+/**
+ * 保存当前画布状态到本地，并触发远程防抖保存
+ */
+const saveToLocalStorage = (getState) => {
+  const state = getState();
+  if (!state.canvasId) return;
+  canvasStorage.save({
+    canvasId: state.canvasId,
+    canvasName: state.canvasName,
+    globalStyle: state.globalStyle,
+    nodes: state.nodes,
+    edges: state.edges,
+    viewport: state.viewport,
+  });
+
+  // 触发远程防抖保存
+  const { triggerRemoteSave } = state;
+  if (typeof triggerRemoteSave === 'function') {
+    triggerRemoteSave();
+  }
+}
 
 /**
  * 边 Slice 初始状态
@@ -41,6 +64,8 @@ export const createEdgesSlice = (getStore, setStore) => ({
       type: 'smoothstep',
     }
     setStore((state) => ({ edges: [...state.edges, newEdge] }))
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
     return newEdge
   },
 
@@ -55,6 +80,8 @@ export const createEdgesSlice = (getStore, setStore) => ({
       ...edge,
     }
     setStore((state) => ({ edges: [...state.edges, newEdge] }))
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
     return newEdge
   },
 
@@ -69,6 +96,8 @@ export const createEdgesSlice = (getStore, setStore) => ({
         edge.id === edgeId ? { ...edge, ...updates } : edge
       ),
     }))
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
   },
 
   /**
@@ -80,6 +109,8 @@ export const createEdgesSlice = (getStore, setStore) => ({
     setStore((state) => ({
       edges: state.edges.filter((edge) => edge.id !== edgeId),
     }))
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
   },
 
   /**
@@ -93,6 +124,8 @@ export const createEdgesSlice = (getStore, setStore) => ({
         (edge) => !(edge.source === sourceNodeId && edge.target === targetNodeId)
       ),
     }))
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
   },
 
   /**
@@ -126,5 +159,7 @@ export const createEdgesSlice = (getStore, setStore) => ({
     setStore((state) => ({
       edges: applyEdgeChanges(changes, state.edges),
     }));
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
   },
 })

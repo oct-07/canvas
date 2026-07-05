@@ -6,3 +6,4 @@ export * from "./styleUtils";
 export * from "./thumbnail";
 export * from "./timeFormat";
 export * from "./upload";
+export * from "./canvasStorage";

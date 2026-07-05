@@ -230,12 +230,12 @@ const BottomParamToolbar = ({
     // 数字升序拼接key
     const combineKey = valueIds.sort((a, b) => Number(a) - Number(b)).join(",");
     const point = currentSelectModel.point_list[combineKey] ?? 0;
-    console.log("[积分计算日志] ", {
-      所有选中valueId: valueIds,
-      拼接key: combineKey,
-      point_list对照表: currentSelectModel.point_list,
-      当前匹配积分: point,
-    });
+    // console.log("[积分计算日志] ", {
+    //   所有选中valueId: valueIds,
+    //   拼接key: combineKey,
+    //   point_list对照表: currentSelectModel.point_list,
+    //   当前匹配积分: point,
+    // });
     return point;
   };
   const consumePoint = getConsumePoint();

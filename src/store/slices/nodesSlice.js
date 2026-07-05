@@ -3,6 +3,30 @@
  */
 import { generateId } from '@/utils/common'
 import { applyNodeChanges } from '@xyflow/react'
+import { canvasStorage } from '@/utils/canvasStorage'
+
+/**
+ * 保存当前画布状态到本地，并触发远程防抖保存
+ */
+const saveToLocalStorage = (getState) => {
+  const state = getState();
+  if (!state.canvasId) return;
+
+  canvasStorage.save({
+    canvasId: state.canvasId,
+    canvasName: state.canvasName,
+    globalStyle: state.globalStyle,
+    nodes: state.nodes,
+    edges: state.edges,
+    viewport: state.viewport,
+  });
+
+  // 触发远程防抖保存
+  const { triggerRemoteSave } = state;
+  if (typeof triggerRemoteSave === 'function') {
+    triggerRemoteSave();
+  }
+}
 
 /**
  * 节点 Slice 初始状态
@@ -40,6 +64,8 @@ export const createNodesSlice = (getStore, setStore) => ({
       ...node,
     }
     setStore((state) => ({ nodes: [...state.nodes, newNode] }))
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
     return newNode
   },
 
@@ -54,6 +80,8 @@ export const createNodesSlice = (getStore, setStore) => ({
         node.id === nodeId ? { ...node, ...updates } : node
       ),
     }))
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
   },
 
   /**
@@ -69,6 +97,8 @@ export const createNodesSlice = (getStore, setStore) => ({
           : node
       ),
     }));
+    // 立即保存到本地
+    saveToLocalStorage(getStore);
   },
 
   /**
@@ -83,6 +113,8 @@ export const createNodesSlice = (getStore, setStore) => ({
         (edge) => edge.source !== nodeId && edge.target !== nodeId
       ),
     }))
+    // 立即保存到本地
+    saveToLocalStorage(getStore)
   },
 
   /**
@@ -100,6 +132,8 @@ export const createNodesSlice = (getStore, setStore) => ({
     setStore((state) => ({
       nodes: applyNodeChanges(changes, state.nodes),
     }))
+    // 节点位置变化时保存到本地
+    saveToLocalStorage(getStore)
   },
   /**
    * 设置画布元素筛选类型 all / image / video

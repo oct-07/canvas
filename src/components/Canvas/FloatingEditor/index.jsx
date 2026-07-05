@@ -1,6 +1,6 @@
 import useCanvasStore from "@/store/canvasStore";
 import { ConfigProvider, theme } from "antd";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import BottomParamToolbar from "./BottomParamToolbar";
 import PromptInputArea from "./PromptInputArea";
@@ -13,21 +13,42 @@ import { Button } from "antd";
 const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
-  const upstreamMediaRefs = useCanvasStore((state) => state.upstreamMediaRefs);
+  const nodes = useCanvasStore((state) => state.nodes);
+  const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
 
-  // 获取当前节点的上游媒体引用（数组格式）
-  const upstreamMediaArray = activeNodeId ? upstreamMediaRefs[activeNodeId] || [] : [];
+  // 获取当前节点的完整数据（从 store 中的 nodes 读取，用于重建上游媒体）
+  const currentNode = useMemo(() => {
+    return nodes.find((n) => n.id === activeNodeId);
+  }, [nodes, activeNodeId]);
+
+  // 获取当前节点的上游媒体引用（从当前节点的 data.refAssetList 构建）
+  // refAssetList 格式: [{ id, type, url, thumbnail, name, sourceNodeId }]
+  const upstreamMediaArray = useMemo(() => {
+    const refAssetList = currentNode?.data?.refAssetList || [];
+    return refAssetList.map((asset, index) => ({
+      id: asset.id || `upstream-${index}`,
+      type: asset.type || "image",
+      url: asset.url || "",
+      thumbnail: asset.thumbnail || asset.url || "",
+      name: asset.name || "素材",
+      sourceNodeId: asset.sourceNodeId || null,
+    }));
+  }, [currentNode?.data?.refAssetList]);
 
   // 将上游媒体数组转换为 PromptInputArea 期望的 assetList 格式
-  // assetList 格式: { type, main_id, image, label }
+  // assetList 格式: { id, type, image, label, url, thumbnail, sourceNodeId }
   const assetList = useMemo(() => {
     if (!upstreamMediaArray || upstreamMediaArray.length === 0) return [];
-    return upstreamMediaArray.map((media, index) => ({
+    return upstreamMediaArray.map((media) => ({
+      id: media.id,
       type: media.type === "video" ? "video" : "img",
-      main_id: `upstream-${media.type}-${index}`,
       image: media.thumbnail || media.url,
-      label: media.name || `${media.type === "video" ? "视频" : "图片"} ${index + 1}`,
+      url: media.url,
+      thumbnail: media.thumbnail || media.url,
+      label: media.name || `${media.type === "video" ? "视频" : "图片"}`,
+      name: media.name,
+      sourceNodeId: media.sourceNodeId,
     }));
   }, [upstreamMediaArray]);
 
@@ -42,24 +63,28 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   };
 
   // 删除上游媒体引用及对应的连线
-  const handleRemoveMedia = (mediaRef) => {
-    const { removeUpstreamMediaRef, removeEdgesBySourceNode, edges } = useCanvasStore.getState();
-    if (!activeNodeId || !mediaRef) return;
+  const handleRemoveMedia = useCallback(
+    (mediaRef) => {
+      const { removeEdgesBySourceNode } = useCanvasStore.getState();
+      if (!activeNodeId || !mediaRef) return;
 
-    // 1. 从 upstreamMediaRefs 中移除该媒体
-    removeUpstreamMediaRef(activeNodeId, mediaRef.url);
+      // 获取最新的 edges 状态
+      const { edges } = useCanvasStore.getState();
 
-    // 2. 找到对应的边并删除
-    if (mediaRef.sourceNodeId) {
-      // 找到从 sourceNodeId 到 activeNodeId 的边
-      const edgeToRemove = edges.find(
-        (e) => e.source === mediaRef.sourceNodeId && e.target === activeNodeId
+      // 1. 从当前节点的 refAssetList 中移除该媒体（用 id 匹配）
+      const currentRefAssetList = currentNode?.data?.refAssetList || [];
+      const updatedRefAssetList = currentRefAssetList.filter(
+        (asset) => asset.id !== mediaRef.id
       );
-      if (edgeToRemove) {
+      updateNodeData(activeNodeId, { refAssetList: updatedRefAssetList });
+
+      // 2. 找到对应的边并删除
+      if (mediaRef.sourceNodeId) {
         removeEdgesBySourceNode(mediaRef.sourceNodeId, activeNodeId);
       }
-    }
-  };
+    },
+    [activeNodeId, currentNode, updateNodeData]
+  );
 
   // 全局状态统一放在父组件
   const [prompt, setPrompt] = useState("");
@@ -78,17 +103,75 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const [cameraMode, setCameraMode] = useState(false);
   const [imageCount, setImageCount] = useState(1);
 
-  // 编辑数据回填（仅在 activeNodeId 变化时执行，避免 BottomParamToolbar 的
-  // handleParamChange 副作用覆盖用户实时输入；与下游 PromptInputArea 的
-  // useEffect([html]) 联动，根本解决"切比例时输入框跳回旧值"的体验问题）
+  // 防抖保存定时器
+  const saveTimerRef = useRef(null);
+
+  // 同步数据到 node.data（防抖）
+  const syncToNodeData = useCallback(
+    (updates) => {
+      if (!activeNodeId) return;
+
+      // 清除之前的定时器
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+
+      // 设置新的定时器，300ms 后保存
+      saveTimerRef.current = setTimeout(() => {
+        updateNodeData(activeNodeId, updates);
+        saveTimerRef.current = null;
+      }, 300);
+    },
+    [activeNodeId, updateNodeData]
+  );
+
+  // prompt 变化时同步到 node.data
+  const handlePromptChange = useCallback(
+    (newHtml) => {
+      setPrompt(newHtml);
+      syncToNodeData({ prompt: newHtml });
+    },
+    [syncToNodeData]
+  );
+
+  // refAssetList 变化时同步到 node.data
+  // assetList 格式: { id, type, image, label }
+  // refAssetList 格式: { id, type, url, thumbnail, name, sourceNodeId }
+  const handleAssetListChange = useCallback(
+    (newAssetList) => {
+      // 将 assetList 格式转换为 refAssetList 格式
+      const updatedRefAssetList = newAssetList.map((asset) => ({
+        id: asset.id,
+        type: asset.type === "video" ? "video" : "image",
+        url: asset.url || asset.image || "",
+        thumbnail: asset.thumbnail || asset.image || "",
+        name: asset.label || asset.name || "素材",
+        sourceNodeId: asset.sourceNodeId || null,
+      }));
+      syncToNodeData({ refAssetList: updatedRefAssetList });
+    },
+    [syncToNodeData]
+  );
+
+  // 组件卸载时清理定时器
   useEffect(() => {
-    if (!editor?.data) return;
-    const data = editor.data;
-    setPrompt(data.prompt ?? "");
-    setStyleValue(data.style ?? "default");
-    setImageUrl(data.imageUrl ?? "");
-    setParams(data.params ?? params);
-  }, [activeNodeId]);
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
+
+  // 编辑数据回填（仅在 activeNodeId 变化时执行）
+  useEffect(() => {
+    // 使用 currentNode.data（从 store 的 nodes 中获取的实时数据）
+    // 而不是 editor.data（仅在打开浮窗时的快照）
+    const nodeData = currentNode?.data || {};
+    setPrompt(nodeData.prompt ?? "");
+    setStyleValue(nodeData.style ?? "default");
+    setImageUrl(nodeData.imageUrl ?? "");
+    setParams(nodeData.params ?? params);
+  }, [activeNodeId, currentNode]);
 
   // 让提示词框随节点高度变化同步位移，始终与节点底边保持默认间距，避免重叠或间距忽大忽小。
   // 图片/视频节点默认宽度均为 260，默认比例 1:1 → 默认高度 260。
@@ -255,8 +338,9 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
         >
           <PromptInputArea
             html={prompt}
-            onChangeHtml={setPrompt}
+            onChangeHtml={handlePromptChange}
             assetList={assetList}
+            onChangeAssetList={handleAssetListChange}
             isFullScreen={isFullScreen}
           />
         </div>

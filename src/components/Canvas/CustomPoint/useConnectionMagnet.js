@@ -135,7 +135,7 @@ export const useConnectionMagnet = () => {
       const store = useCanvasStore.getState();
       store.setEdges([...store.edges, edge]);
 
-      // 保存上游媒体引用（与 handleConnect 相同的逻辑）
+      // 将源节点素材存入目标节点的 refAssetList
       const { source, target } = result.connection;
       const latestNodes = store.nodes;
       const sourceNode = latestNodes.find((n) => n.id === source);
@@ -144,14 +144,29 @@ export const useConnectionMagnet = () => {
         ["video", "image", "upload"].includes(sourceNode.type);
 
       if (isMediaNode && sourceNode?.data) {
-        const mediaRef = {
+        const mediaAsset = {
+          id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: sourceNode.type,
           url: sourceNode.data.url || "",
           thumbnail: sourceNode.data.thumbnail || sourceNode.data.url || "",
           name: sourceNode.data.name || "",
+          sourceNodeId: source,
         };
-        if (mediaRef.url) {
-          store.addUpstreamMediaRef(target, { ...mediaRef, sourceNodeId: source });
+
+        if (mediaAsset.url) {
+          // 获取目标节点当前的 refAssetList
+          const targetNode = latestNodes.find((n) => n.id === target);
+          const currentRefAssetList = targetNode?.data?.refAssetList || [];
+
+          // 检查是否已存在相同 URL 的素材（防止重复添加）
+          const isDuplicate = currentRefAssetList.some(
+            (asset) => asset.url === mediaAsset.url
+          );
+
+          if (!isDuplicate) {
+            const updatedRefAssetList = [...currentRefAssetList, mediaAsset];
+            store.updateNodeData(target, { refAssetList: updatedRefAssetList });
+          }
         }
       }
 

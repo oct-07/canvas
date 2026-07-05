@@ -104,28 +104,35 @@ export const createEdgesSlice = (getStore, setStore) => ({
    * 删除边
    */
   removeEdge: (edgeId) => {
-    const { saveHistory } = getStore()
-    saveHistory()
+    const { saveHistory, nodes, updateNodeData } = getStore();
+    saveHistory();
+
+    // 找到被删除的边，获取 source 和 target
+    const edge = nodes.find((n) => n.id === edgeId) || {};
+
     setStore((state) => ({
       edges: state.edges.filter((edge) => edge.id !== edgeId),
-    }))
+    }));
+
     // 立即保存到本地
-    saveToLocalStorage(getStore)
+    saveToLocalStorage(getStore);
   },
 
   /**
    * 删除与指定源节点相关的边
    */
   removeEdgesBySourceNode: (sourceNodeId, targetNodeId) => {
-    const { saveHistory } = getStore()
-    saveHistory()
+    const { saveHistory, nodes, updateNodeData } = getStore();
+    saveHistory();
+
     setStore((state) => ({
       edges: state.edges.filter(
         (edge) => !(edge.source === sourceNodeId && edge.target === targetNodeId)
       ),
-    }))
+    }));
+
     // 立即保存到本地
-    saveToLocalStorage(getStore)
+    saveToLocalStorage(getStore);
   },
 
   /**
@@ -142,7 +149,7 @@ export const createEdgesSlice = (getStore, setStore) => ({
   onEdgesChange: (changes) => {
     const store = getStore();
 
-    // 处理边删除时清除对应的上游媒体引用
+    // 处理边删除时清除对应的上游媒体引用（从目标节点的 refAssetList 中移除）
     changes.forEach((change) => {
       if (change.type === "remove") {
         const edge = store.edges.find((e) => e.id === change.id);
@@ -150,7 +157,14 @@ export const createEdgesSlice = (getStore, setStore) => ({
           // 获取源节点数据，找到对应的 URL
           const sourceNode = store.nodes.find((n) => n.id === edge.source);
           if (sourceNode?.data?.url) {
-            store.removeUpstreamMediaRef(edge.target, sourceNode.data.url);
+            // 从目标节点的 refAssetList 中移除对应 URL 的素材
+            const targetNode = store.nodes.find((n) => n.id === edge.target);
+            if (targetNode?.data?.refAssetList) {
+              const updatedRefAssetList = targetNode.data.refAssetList.filter(
+                (asset) => asset.url !== sourceNode.data.url
+              );
+              store.updateNodeData(edge.target, { refAssetList: updatedRefAssetList });
+            }
           }
         }
       }
@@ -160,6 +174,6 @@ export const createEdgesSlice = (getStore, setStore) => ({
       edges: applyEdgeChanges(changes, state.edges),
     }));
     // 立即保存到本地
-    saveToLocalStorage(getStore)
+    saveToLocalStorage(getStore);
   },
 })

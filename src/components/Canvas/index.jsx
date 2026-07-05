@@ -166,18 +166,37 @@ const CanvasContent = () => {
         sourceNode &&
         ["video", "image", "upload"].includes(sourceNode.type);
 
-      // 如果源节点是媒体节点，保存其媒体数据到目标节点的 upstreamMediaRefs
+      // 如果源节点是媒体节点，将素材存入目标节点的 refAssetList
       if (isMediaNode && sourceNode?.data) {
-        const mediaRef = {
+        const mediaAsset = {
+          id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: sourceNode.type,
           url: sourceNode.data.url || "",
           thumbnail: sourceNode.data.thumbnail || sourceNode.data.url || "",
           name: sourceNode.data.name || "",
+          sourceNodeId: source,
         };
-        console.log("[handleConnect] 保存上游媒体:", mediaRef);
+
+        console.log("[handleConnect] 保存上游媒体到目标节点:", mediaAsset);
+
         // 只有有实际 URL 的才保存
-        if (mediaRef.url) {
-          useCanvasStore.getState().addUpstreamMediaRef(target, { ...mediaRef, sourceNodeId: source });
+        if (mediaAsset.url) {
+          // 获取目标节点当前的 refAssetList
+          const targetNode = latestNodes.find((n) => n.id === target);
+          const currentRefAssetList = targetNode?.data?.refAssetList || [];
+
+          // 检查是否已存在相同 URL 的素材（防止重复添加）
+          const isDuplicate = currentRefAssetList.some(
+            (asset) => asset.url === mediaAsset.url
+          );
+
+          if (!isDuplicate) {
+            const updatedRefAssetList = [...currentRefAssetList, mediaAsset];
+            // 直接更新目标节点的 data
+            useCanvasStore.getState().updateNodeData(target, {
+              refAssetList: updatedRefAssetList,
+            });
+          }
         }
       }
 

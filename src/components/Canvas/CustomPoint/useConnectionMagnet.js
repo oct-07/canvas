@@ -134,6 +134,27 @@ export const useConnectionMagnet = () => {
       const edge = createEdge(result.connection);
       const store = useCanvasStore.getState();
       store.setEdges([...store.edges, edge]);
+
+      // 保存上游媒体引用（与 handleConnect 相同的逻辑）
+      const { source, target } = result.connection;
+      const latestNodes = store.nodes;
+      const sourceNode = latestNodes.find((n) => n.id === source);
+      const isMediaNode =
+        sourceNode &&
+        ["video", "image", "upload"].includes(sourceNode.type);
+
+      if (isMediaNode && sourceNode?.data) {
+        const mediaRef = {
+          type: sourceNode.type,
+          url: sourceNode.data.url || "",
+          thumbnail: sourceNode.data.thumbnail || sourceNode.data.url || "",
+          name: sourceNode.data.name || "",
+        };
+        if (mediaRef.url) {
+          store.addUpstreamMediaRef(target, { ...mediaRef, sourceNodeId: source });
+        }
+      }
+
       store.saveHistory();
     }
     teardown();

@@ -24,6 +24,9 @@ export const uiInitialState = {
   draggingNodeId: null,
   // 全局唯一：当前正在显示「悬停跟随删除图标」的连线ID（保证全局最多 1 个）
   hoverDeleteEdgeId: null,
+  // 上游媒体引用：key 为节点ID，value 为上游媒体数据 { type, url, thumbnail, name }
+  // 用于在 AI 节点的提示词框中展示上游视频/图片/上传节点的媒体数据
+  upstreamMediaRefs: {},
 };
 
 /**
@@ -144,5 +147,55 @@ export const createUISlice = (getStore, setStore) => ({
         },
       };
     });
+  },
+
+  // ========== 上游媒体引用相关 ==========
+  // 存储结构：{ nodeId: [mediaRef1, mediaRef2, ...] }
+  upstreamMediaRefs: {},
+  addUpstreamMediaRef: (nodeId, mediaData) => {
+    setStore((state) => {
+      const existing = state.upstreamMediaRefs[nodeId] || [];
+      // 防止重复添加同一来源的媒体引用
+      const isDuplicate = existing.some(
+        (ref) => ref.url === mediaData.url && ref.type === mediaData.type
+      );
+      if (isDuplicate) {
+        return state;
+      }
+      return {
+        upstreamMediaRefs: {
+          ...state.upstreamMediaRefs,
+          [nodeId]: [...existing, mediaData],
+        },
+      };
+    });
+  },
+  setUpstreamMediaRef: (nodeId, mediaData) => {
+    setStore((state) => ({
+      upstreamMediaRefs: {
+        ...state.upstreamMediaRefs,
+        [nodeId]: [mediaData],
+      },
+    }));
+  },
+  removeUpstreamMediaRef: (nodeId, url) => {
+    setStore((state) => ({
+      upstreamMediaRefs: {
+        ...state.upstreamMediaRefs,
+        [nodeId]: (state.upstreamMediaRefs[nodeId] || []).filter(
+          (ref) => ref.url !== url
+        ),
+      },
+    }));
+  },
+  clearUpstreamMediaRef: (nodeId) => {
+    setStore((state) => {
+      const next = { ...state.upstreamMediaRefs };
+      delete next[nodeId];
+      return { upstreamMediaRefs: next };
+    });
+  },
+  clearAllUpstreamMediaRefs: () => {
+    setStore({ upstreamMediaRefs: {} });
   },
 });

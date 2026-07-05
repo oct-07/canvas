@@ -114,6 +114,11 @@
   background: #3f3f46;
 }
 
+.mentionItemActive {
+  background: #3f3f46;
+  outline: 1px solid #1890ff;
+}
+
 .itemLeft {
   display: flex;
   align-items: center;

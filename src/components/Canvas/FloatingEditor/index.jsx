@@ -13,7 +13,23 @@ import { Button } from "antd";
 const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
+  const upstreamMediaRefs = useCanvasStore((state) => state.upstreamMediaRefs);
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
+
+  // 获取当前节点的上游媒体引用（数组格式）
+  const upstreamMediaArray = activeNodeId ? upstreamMediaRefs[activeNodeId] || [] : [];
+
+  // 将上游媒体数组转换为 PromptInputArea 期望的 assetList 格式
+  // assetList 格式: { type, main_id, image, label }
+  const assetList = useMemo(() => {
+    if (!upstreamMediaArray || upstreamMediaArray.length === 0) return [];
+    return upstreamMediaArray.map((media, index) => ({
+      type: media.type === "video" ? "video" : "img",
+      main_id: `upstream-${media.type}-${index}`,
+      image: media.thumbnail || media.url,
+      label: media.name || `${media.type === "video" ? "视频" : "图片"} ${index + 1}`,
+    }));
+  }, [upstreamMediaArray]);
 
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -23,6 +39,26 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
 
   const closeFullScreen = () => {
     setIsFullScreen(false);
+  };
+
+  // 删除上游媒体引用及对应的连线
+  const handleRemoveMedia = (mediaRef) => {
+    const { removeUpstreamMediaRef, removeEdgesBySourceNode, edges } = useCanvasStore.getState();
+    if (!activeNodeId || !mediaRef) return;
+
+    // 1. 从 upstreamMediaRefs 中移除该媒体
+    removeUpstreamMediaRef(activeNodeId, mediaRef.url);
+
+    // 2. 找到对应的边并删除
+    if (mediaRef.sourceNodeId) {
+      // 找到从 sourceNodeId 到 activeNodeId 的边
+      const edgeToRemove = edges.find(
+        (e) => e.source === mediaRef.sourceNodeId && e.target === activeNodeId
+      );
+      if (edgeToRemove) {
+        removeEdgesBySourceNode(mediaRef.sourceNodeId, activeNodeId);
+      }
+    }
   };
 
   // 全局状态统一放在父组件
@@ -205,6 +241,9 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
           styleValue={styleValue}
           onChangeStyle={setStyleValue}
           onOpenMark={() => console.log("打开标记面板")}
+          upstreamMedia={upstreamMediaArray[0] || null}
+          upstreamMediaList={upstreamMediaArray}
+          onRemoveMedia={handleRemoveMedia}
         />
 
         <div
@@ -217,6 +256,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
           <PromptInputArea
             html={prompt}
             onChangeHtml={setPrompt}
+            assetList={assetList}
             isFullScreen={isFullScreen}
           />
         </div>

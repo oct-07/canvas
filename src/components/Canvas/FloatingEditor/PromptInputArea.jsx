@@ -35,8 +35,10 @@ const PromptInputArea = ({
   // @素材弹窗状态
   const [mentionVisible, setMentionVisible] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState({ left: 0, top: 0 });
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const savedRangeRef = useRef(null);
   const replaceTargetRef = useRef(null);
+  const mentionVisibleRef = useRef(false); // 用 ref 追踪弹窗可见性，避免闭包问题
 
   // ==================== 工具：清理空白文本节点，避免隐形撑高 ====================
   const cleanEmptyTextNodes = useCallback((rootEl) => {
@@ -247,10 +249,35 @@ const PromptInputArea = ({
     [createAssetTag, onChangeHtml],
   );
 
+  // 重置选中状态
+  const resetSelection = () => {
+    setMentionVisible(false);
+    mentionVisibleRef.current = false;
+    setSelectedIndex(0);
+  };
+
   // 弹窗素材点击统一入口
   const handleSelectAsset = (item) => {
     if (replaceTargetRef.current) replaceAssetTag(item);
     else insertAssetTag(item);
+    resetSelection();
+  };
+
+  // 上移选中项
+  const handleMoveUp = () => {
+    setSelectedIndex((prev) => (prev > 0 ? prev - 1 : assetList.length - 1));
+  };
+
+  // 下移选中项
+  const handleMoveDown = () => {
+    setSelectedIndex((prev) => (prev < assetList.length - 1 ? prev + 1 : 0));
+  };
+
+  // 确认选中
+  const handleConfirm = () => {
+    if (assetList.length > 0 && selectedIndex >= 0) {
+      handleSelectAsset(assetList[selectedIndex]);
+    }
   };
 
   // ==================== 原生事件处理 ====================
@@ -270,6 +297,15 @@ const PromptInputArea = ({
   // 监听@字符唤起弹窗
   const handleKeyUp = useCallback(
     (e) => {
+      // 关闭弹窗时重置选中状态
+      if (e.key === "Escape" && mentionVisibleRef.current) {
+        resetSelection();
+        return;
+      }
+
+      // 弹窗已打开时不重复触发 @ 检测，避免重置 selectedIndex
+      if (mentionVisibleRef.current) return;
+
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
@@ -280,14 +316,40 @@ const PromptInputArea = ({
         saveCurrentRange();
         updatePopoverPosition();
         setMentionVisible(true);
+        mentionVisibleRef.current = true;
+        setSelectedIndex(0);
       }
     },
-    [saveCurrentRange, updatePopoverPosition],
+    [saveCurrentRange, updatePopoverPosition, resetSelection],
   );
 
   // 退格删除整块原子块（修复TextNode closest报错）
   const handleKeyDown = useCallback(
     (e) => {
+      // 弹窗打开时的键盘导航（使用 ref 避免闭包问题）
+      if (mentionVisibleRef.current) {
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          handleMoveUp();
+          return;
+        }
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          handleMoveDown();
+          return;
+        }
+        if (e.key === "Enter") {
+          e.preventDefault();
+          handleConfirm();
+          return;
+        }
+        if (e.key === "Escape") {
+          e.preventDefault();
+          resetSelection();
+          return;
+        }
+      }
+
       if (e.key !== "Backspace") return;
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
@@ -316,7 +378,7 @@ const PromptInputArea = ({
       sel.removeAllRanges();
       sel.addRange(newRange);
     },
-    [onChangeHtml],
+    [onChangeHtml, handleMoveUp, handleMoveDown, handleConfirm],
   );
 
   // 点击输入框刷新弹窗位置
@@ -393,11 +455,12 @@ const PromptInputArea = ({
           className={`${styles.mentionPopover} nodrag nopan`}
           style={popoverStyle}
         >
-          {assetList.map((item) => (
+          {assetList.map((item, idx) => (
             <div
               key={`${item.type}-${item.main_id}`}
-              className={styles.mentionItem}
+              className={`${styles.mentionItem} ${idx === selectedIndex ? styles.mentionItemActive : ""}`}
               onClick={() => handleSelectAsset(item)}
+              onMouseEnter={() => setSelectedIndex(idx)}
             >
               <div className={styles.itemLeft}>
                 <img src={item.image} alt="" className={styles.itemThumb} />

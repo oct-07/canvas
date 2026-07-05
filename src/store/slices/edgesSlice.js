@@ -83,6 +83,19 @@ export const createEdgesSlice = (getStore, setStore) => ({
   },
 
   /**
+   * 删除与指定源节点相关的边
+   */
+  removeEdgesBySourceNode: (sourceNodeId, targetNodeId) => {
+    const { saveHistory } = getStore()
+    saveHistory()
+    setStore((state) => ({
+      edges: state.edges.filter(
+        (edge) => !(edge.source === sourceNodeId && edge.target === targetNodeId)
+      ),
+    }))
+  },
+
+  /**
    * 删除边 (别名)
    */
   deleteEdge: (edgeId) => {
@@ -94,8 +107,24 @@ export const createEdgesSlice = (getStore, setStore) => ({
    * 边变化处理
    */
   onEdgesChange: (changes) => {
+    const store = getStore();
+
+    // 处理边删除时清除对应的上游媒体引用
+    changes.forEach((change) => {
+      if (change.type === "remove") {
+        const edge = store.edges.find((e) => e.id === change.id);
+        if (edge?.source && edge?.target) {
+          // 获取源节点数据，找到对应的 URL
+          const sourceNode = store.nodes.find((n) => n.id === edge.source);
+          if (sourceNode?.data?.url) {
+            store.removeUpstreamMediaRef(edge.target, sourceNode.data.url);
+          }
+        }
+      }
+    });
+
     setStore((state) => ({
       edges: applyEdgeChanges(changes, state.edges),
-    }))
+    }));
   },
 })

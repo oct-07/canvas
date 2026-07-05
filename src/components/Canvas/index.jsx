@@ -123,6 +123,31 @@ const CanvasContent = () => {
     (connection) => {
       // 标记原生（精确落在手柄）连线已处理，避免磁吸重复建边
       markNativeConnect();
+
+      // 获取源节点和目标节点的数据
+      const { source, target } = connection;
+      // 使用 getState() 获取最新的节点数据，避免闭包 stale 问题
+      const latestNodes = useCanvasStore.getState().nodes;
+      const sourceNode = latestNodes.find((n) => n.id === source);
+      const isMediaNode =
+        sourceNode &&
+        ["video", "image", "upload"].includes(sourceNode.type);
+
+      // 如果源节点是媒体节点，保存其媒体数据到目标节点的 upstreamMediaRefs
+      if (isMediaNode && sourceNode?.data) {
+        const mediaRef = {
+          type: sourceNode.type,
+          url: sourceNode.data.url || "",
+          thumbnail: sourceNode.data.thumbnail || sourceNode.data.url || "",
+          name: sourceNode.data.name || "",
+        };
+        console.log("[handleConnect] 保存上游媒体:", mediaRef);
+        // 只有有实际 URL 的才保存
+        if (mediaRef.url) {
+          useCanvasStore.getState().addUpstreamMediaRef(target, { ...mediaRef, sourceNodeId: source });
+        }
+      }
+
       const newEdge = {
         ...connection,
         id: `edge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -313,6 +338,23 @@ const CanvasContent = () => {
     [screenToFlowPosition, addNode],
   );
 
+  const handleAddUpload = useCallback(
+    (menuPos) => {
+      const position = screenToFlowPosition({
+        x: menuPos.x,
+        y: menuPos.y,
+      });
+      const newNode = {
+        id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: "upload",
+        position,
+        data: {},
+      };
+      addNode(newNode);
+    },
+    [screenToFlowPosition, addNode],
+  );
+
   useEffect(() => {
     const handleKeyDown = (e) => {
       const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
@@ -493,7 +535,7 @@ const CanvasContent = () => {
 
       <MagnetHandle />
 
-      <ContextMenu onAddImage={handleAddImage} onAddVideo={handleAddVideo} />
+      <ContextMenu onAddImage={handleAddImage} onAddVideo={handleAddVideo} onAddUpload={handleAddUpload} />
     </div>
   );
 };

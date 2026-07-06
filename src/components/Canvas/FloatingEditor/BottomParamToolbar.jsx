@@ -1,8 +1,8 @@
 import { createContent } from "@/api";
 import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import useCanvasStore from "@/store/canvasStore";
-import { buildMediaBody } from "@/utils/generateParams.js";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
+import { buildMediaBody } from "@/utils/generateParams.js";
 import {
   getParamChineseName,
   getParamValueChinese,
@@ -53,6 +53,9 @@ const BottomParamToolbar = ({
   onChangeSteps,
   onSubmit,
 }) => {
+  //弹框气泡
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
   // 从 modelListMap 中取当前节点 model_type 对应的模型
   const modelListMap = useCanvasStore((state) => state.modelListMap);
 
@@ -82,7 +85,9 @@ const BottomParamToolbar = ({
 
   // 比例选中状态：优先从已保存参数里恢复；统一存为字符串与 RATIO_LIST.key 对齐
   const [currentRatio, setCurrentRatio] = useState(() =>
-    paramValues.aspect_ratio == null ? "auto" : String(paramValues.aspect_ratio),
+    paramValues.aspect_ratio == null
+      ? "auto"
+      : String(paramValues.aspect_ratio),
   );
   // 提交加载状态
   const [submitting, setSubmitting] = useState(false);
@@ -331,6 +336,9 @@ const BottomParamToolbar = ({
                   onClick={() => {
                     setCurrentRatio(String(opt.key));
                     handleParamChange("aspect_ratio", opt.value);
+                    // 关键：关闭再打开弹窗，强制重新计算定位
+                    setPopoverOpen(false);
+                    setTimeout(() => setPopoverOpen(true), 0);
                   }}
                 >
                   {/* 比例预览小图标：宽度固定 20px，高度由 aspect-ratio 自动计算 */}
@@ -527,8 +535,11 @@ const BottomParamToolbar = ({
 
         {propList.length > 0 && (
           <Popover
+            open={popoverOpen}
+            onOpenChange={setPopoverOpen}
             trigger="click"
             placement="bottom"
+            forceAlign // 强制每次渲染都重新对齐
             content={renderParamPanel()}
           >
             <Button

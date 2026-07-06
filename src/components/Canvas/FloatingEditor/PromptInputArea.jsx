@@ -18,18 +18,12 @@ export const parseAssetIdsFromHtml = (html) => {
   if (!html) return [];
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, "text/html");
-  const tags = doc.querySelectorAll('[data-asset-id]');
+  const tags = doc.querySelectorAll("[data-asset-id]");
   return Array.from(tags).map((tag) => tag.dataset.assetId);
 };
 
 // 默认素材列表（仅用于静态展示，实际数据从父组件传入）
 const defaultAssetList = [
-  {
-    id: "default_1",
-    type: "img",
-    image: "https://p3-juejin.byteimg.com/tos-cn-i-k3u1fbpfcp/03120d47334c40389999202d30020750~tplv-k3u1fbpfcp-watermark.image",
-    label: "示例素材",
-  },
 ];
 
 const PromptInputArea = ({
@@ -41,10 +35,13 @@ const PromptInputArea = ({
 }) => {
   // DOM容器
   const editorRef = useRef(null); // 内层富文本contenteditable
+  const promptEditorRef = useRef(null); // 通过稳定选择器追踪提示词编辑器DOM
   const wrapRef = useRef(null); // 整体外层定位容器
   const scrollWrapRef = useRef(null); // 外层滚动容器（真正承载max-height/overflow）
 
   const lockSyncRef = useRef(false); // 双向同步锁，防止循环渲染
+  const lastSyncedHtmlRef = useRef(html); // 已同步的html快照，用于判断是否真正需要覆写
+  const isLocalModifyRef = useRef(false); // 标记本次html变更是否来自本地操作，阻断store回写循环
 
   // @素材弹窗状态
   const [mentionVisible, setMentionVisible] = useState(false);
@@ -54,14 +51,25 @@ const PromptInputArea = ({
   const replaceTargetRef = useRef(null);
   const mentionVisibleRef = useRef(false); // 用 ref 追踪弹窗可见性，避免闭包问题
   const isInsertingRef = useRef(false); // 防止插入过程中被重置
-
+  const assetSeqRef = useRef(1);
+  const assetIdToSeqRef = useRef(new Map());
   // 素材列表的本地状态（用于管理完整列表）
   const [localAssetList, setLocalAssetList] = useState(assetList);
 
   // 追踪用户本地添加的素材 ID（防止被 store 数据覆盖）
   const addedAssetIdsRef = useRef(new Set());
 
-  // 当 assetList（上游数据）变化时，合并本地添加的素材
+  // 同步真实提示词编辑器 DOM，避免父组件拿到的 promptRef 与实际 DOM 脱节
+  useEffect(() => {
+    promptEditorRef.current = editorRef.current;
+  });
+
+  // 组件挂载时初始化快照兜底
+  useEffect(() => {
+    lastSyncedHtmlRef.current = html || "";
+  }, []);
+
+  // 当 assetList（上游数据）变化时，合并本地添加的素材，并重建序号映射
   useEffect(() => {
     const currentIds = new Set(localAssetList.map((a) => a.id));
     // 添加不在当前列表中但用户已添加的素材
@@ -75,6 +83,36 @@ const PromptInputArea = ({
       }
     });
     setLocalAssetList(mergedList);
+
+    // 重建序号映射，保证删除后再新增时序号从 1 紧凑重排
+    const newSeqMap = new Map();
+    let nextSeq = 1;
+    mergedList.forEach((asset) => {
+      newSeqMap.set(asset.id, nextSeq);
+      nextSeq += 1;
+    });
+    assetIdToSeqRef.current = newSeqMap;
+    assetSeqRef.current = nextSeq;
+
+    // 兜底清理：如果 prompt DOM 里还有 assetList 中不存在的素材引用，直接删除
+    const editor = promptEditorRef.current || editorRef.current;
+    if (!editor) return;
+    const validIds = new Set(assetList.map((a) => a.id));
+    let changed = false;
+    editor.querySelectorAll("[data-asset-id]").forEach((tag) => {
+      if (!validIds.has(tag.dataset.assetId)) {
+        const outerShell = tag.closest('[contenteditable="false"]');
+        if (outerShell) {
+          outerShell.remove();
+          changed = true;
+        }
+      }
+    });
+    if (changed) {
+      const cleanedHtml = editor.innerHTML;
+      lastSyncedHtmlRef.current = cleanedHtml;
+      onChangeHtml(cleanedHtml);
+    }
   }, [assetList]);
 
   // 获取当前完整的素材列表（用于同步）
@@ -168,7 +206,6 @@ const PromptInputArea = ({
 
   // ==================== 创建原子块DOM（外层不可编辑隔离壳，固定单行高度不撑高滚动容器） ====================
   const createAssetTag = useCallback((item) => {
-    // 外层隔离壳：contenteditable=false，单行高度约束
     const outerShell = document.createElement("span");
     outerShell.contentEditable = "false";
     outerShell.style.display = "inline";
@@ -176,15 +213,14 @@ const PromptInputArea = ({
     outerShell.style.maxHeight = "26px";
     outerShell.style.overflow = "hidden";
 
-    // 内层视觉卡片
     const tagEl = document.createElement("span");
     tagEl.className = styles.assetTag;
-    // 使用传入的 assetId（用于数据恢复和引用追踪）
-    tagEl.dataset.assetId = item.id || generateAssetId();
+    const assetId = item.id || generateAssetId();
+    tagEl.dataset.assetId = assetId;
     tagEl.style.maxHeight = "26px";
     tagEl.style.overflow = "hidden";
 
-    // 点击唤起替换弹窗
+    // 点击替换弹窗逻辑不变
     tagEl.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -196,9 +232,9 @@ const PromptInputArea = ({
         top: rect.bottom - wrapRect.top + 6,
       });
       setMentionVisible(true);
+      mentionVisibleRef.current = true;
     });
 
-    // 缩略图
     const imgWrap = document.createElement("div");
     imgWrap.className = styles.tagImgWrap;
     const img = document.createElement("img");
@@ -208,10 +244,17 @@ const PromptInputArea = ({
     img.onerror = () => (imgWrap.innerHTML = "<span>🖼</span>");
     imgWrap.appendChild(img);
 
-    // 素材名称
+    // ========== 重点改造：不再渲染原始文件名，使用 @图X 格式 ==========
     const labelText = document.createElement("span");
     labelText.className = styles.tagLabel;
-    labelText.textContent = item.label;
+    // 优先读取已有序号，没有则分配新序号
+    let seq = assetIdToSeqRef.current.get(assetId);
+    if (seq === undefined) {
+      seq = assetSeqRef.current;
+      assetIdToSeqRef.current.set(assetId, seq);
+      assetSeqRef.current += 1;
+    }
+    labelText.textContent = `@图${seq}`;
 
     tagEl.append(imgWrap, labelText);
     outerShell.appendChild(tagEl);
@@ -221,6 +264,7 @@ const PromptInputArea = ({
   // ==================== 插入@素材 ====================
   const insertAssetTag = useCallback(
     (item) => {
+      console.log("[0] insertAssetTag 被调用, item =", item);
       const editor = editorRef.current;
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
@@ -280,7 +324,10 @@ const PromptInputArea = ({
 
       // 同步父组件：使用当前完整的素材列表
       lockSyncRef.current = true;
+      isLocalModifyRef.current = true;
       const newHtml = editor.innerHTML;
+      lastSyncedHtmlRef.current = newHtml;
+      console.log("[1] insertAssetTag 即将 onChangeHtml, newHtml =", newHtml);
       onChangeHtml(newHtml);
 
       // 获取当前完整的 assetList 并添加新插入的素材
@@ -295,12 +342,14 @@ const PromptInputArea = ({
       setLocalAssetList(updatedAssetList);
       onChangeAssetList(updatedAssetList);
 
-      // 延迟解除锁定和插入状态
+      // 延迟解锁，对齐防抖300ms周期
       setTimeout(() => {
+        console.log("[6] setTimeout 解锁 lockSync 和 isInserting");
         lockSyncRef.current = false;
         isInsertingRef.current = false;
-      }, 50);
+      }, 320);
       setMentionVisible(false);
+      mentionVisibleRef.current = false;
       savedRangeRef.current = null;
     },
     [createAssetTag, onChangeHtml, onChangeAssetList, getCurrentAssetList],
@@ -329,13 +378,15 @@ const PromptInputArea = ({
       replaceTargetRef.current = null;
 
       lockSyncRef.current = true;
+      isLocalModifyRef.current = true;
       const newHtml = editor.innerHTML;
+      lastSyncedHtmlRef.current = newHtml;
       onChangeHtml(newHtml);
 
       // 获取当前完整的 assetList 并替换对应项
       const currentAssetList = getCurrentAssetList();
       const updatedAssetList = currentAssetList.map((a) =>
-        a.id === oldAssetId ? assetItem : a
+        a.id === oldAssetId ? assetItem : a,
       );
       // 如果是新增的素材，更新追踪的 ID
       if (!currentAssetList.some((a) => a.id === assetItem.id)) {
@@ -344,8 +395,9 @@ const PromptInputArea = ({
       setLocalAssetList(updatedAssetList);
       onChangeAssetList(updatedAssetList);
 
-      setTimeout(() => (lockSyncRef.current = false), 0);
+      setTimeout(() => (lockSyncRef.current = false), 320);
       setMentionVisible(false);
+      mentionVisibleRef.current = false;
     },
     [createAssetTag, onChangeHtml, onChangeAssetList, getCurrentAssetList],
   );
@@ -359,6 +411,10 @@ const PromptInputArea = ({
 
   // 弹窗素材点击统一入口
   const handleSelectAsset = (item) => {
+    console.log("[开始] handleSelectAsset", {
+      item,
+      replaceTarget: replaceTargetRef.current,
+    });
     if (replaceTargetRef.current) replaceAssetTag(item);
     else insertAssetTag(item);
     resetSelection();
@@ -366,12 +422,16 @@ const PromptInputArea = ({
 
   // 上移选中项
   const handleMoveUp = () => {
-    setSelectedIndex((prev) => (prev > 0 ? prev - 1 : localAssetList.length - 1));
+    setSelectedIndex((prev) =>
+      prev > 0 ? prev - 1 : localAssetList.length - 1,
+    );
   };
 
   // 下移选中项
   const handleMoveDown = () => {
-    setSelectedIndex((prev) => (prev < localAssetList.length - 1 ? prev + 1 : 0));
+    setSelectedIndex((prev) =>
+      prev < localAssetList.length - 1 ? prev + 1 : 0,
+    );
   };
 
   // 确认选中
@@ -385,6 +445,8 @@ const PromptInputArea = ({
   const handleInput = useCallback(() => {
     if (lockSyncRef.current || isInsertingRef.current) return;
     const html = editorRef.current.innerHTML;
+    lastSyncedHtmlRef.current = html;
+    isLocalModifyRef.current = true;
     onChangeHtml(html);
     cleanEmptyTextNodes(editorRef.current);
     if (mentionVisible) updatePopoverPosition();
@@ -464,24 +526,56 @@ const PromptInputArea = ({
 
       e.preventDefault();
       // 获取要删除的 assetId
-      const deletedAssetId = outerShell.querySelector('[data-asset-id]')?.dataset?.assetId;
+      const deletedAssetId =
+        outerShell.querySelector("[data-asset-id]")?.dataset?.assetId;
       outerShell.remove();
 
       lockSyncRef.current = true;
+      isLocalModifyRef.current = true;
       const newHtml = editorRef.current.innerHTML;
+      lastSyncedHtmlRef.current = newHtml;
       onChangeHtml(newHtml);
 
       // 从 assetList 中移除被删除的素材
       if (deletedAssetId) {
+        // 1. 删除序号映射
+        assetIdToSeqRef.current.delete(deletedAssetId);
+
+        // 2. 重建剩余素材的序号映射，避免删除后新增序号继续追加
         const currentAssetList = getCurrentAssetList();
-        const updatedAssetList = currentAssetList.filter((a) => a.id !== deletedAssetId);
-        // 从追踪列表中移除
+        const remainingAssets = currentAssetList.filter(
+          (a) => a.id !== deletedAssetId,
+        );
+        const newSeqMap = new Map();
+        let nextSeq = 1;
+        remainingAssets.forEach((asset) => {
+          newSeqMap.set(asset.id, nextSeq);
+          nextSeq += 1;
+        });
+        assetIdToSeqRef.current = newSeqMap;
+        assetSeqRef.current = nextSeq;
+
+        // 3. 过滤本地素材列表
+        const updatedAssetList = remainingAssets;
         addedAssetIdsRef.current.delete(deletedAssetId);
         setLocalAssetList(updatedAssetList);
+        // 同步父组件更新refAssetList
         onChangeAssetList(updatedAssetList);
+
+        // 4. 刷新编辑器内所有原子块的序号文字
+        if (editorRef.current) {
+          editorRef.current.querySelectorAll("[data-asset-id]").forEach((tag) => {
+            const aid = tag.dataset.assetId;
+            const newSeq = assetIdToSeqRef.current.get(aid);
+            if (newSeq !== undefined) {
+              const labelSpan = tag.querySelector(`.${styles.tagLabel}`);
+              if (labelSpan) labelSpan.textContent = `@图${newSeq}`;
+            }
+          });
+        }
       }
 
-      setTimeout(() => (lockSyncRef.current = false), 0);
+      setTimeout(() => (lockSyncRef.current = false), 320);
 
       // 删除后重置光标
       const newRange = document.createRange();
@@ -494,7 +588,14 @@ const PromptInputArea = ({
       sel.removeAllRanges();
       sel.addRange(newRange);
     },
-    [onChangeHtml, onChangeAssetList, getCurrentAssetList, handleMoveUp, handleMoveDown, handleConfirm],
+    [
+      onChangeHtml,
+      onChangeAssetList,
+      getCurrentAssetList,
+      handleMoveUp,
+      handleMoveDown,
+      handleConfirm,
+    ],
   );
 
   // 点击输入框刷新弹窗位置
@@ -508,6 +609,7 @@ const PromptInputArea = ({
       const popover = document.querySelector(`.${styles.mentionPopover}`);
       if (wrapRef.current && popover && !wrapRef.current.contains(e.target)) {
         setMentionVisible(false);
+        mentionVisibleRef.current = false;
       }
     };
     window.addEventListener("mousedown", closePop);
@@ -517,7 +619,9 @@ const PromptInputArea = ({
   // 拦截粘贴，仅保留纯文本，避免带入外部 HTML 样式（div 块、border 等）
   const handlePaste = useCallback((e) => {
     e.preventDefault();
-    const text = (e.clipboardData || window.clipboardData).getData("text/plain");
+    const text = (e.clipboardData || window.clipboardData).getData(
+      "text/plain",
+    );
     document.execCommand("insertText", false, text);
   }, []);
 
@@ -531,14 +635,53 @@ const PromptInputArea = ({
     scrollWrap.style.minHeight = height;
   }, [isFullScreen]);
 
-  // 父组件外部html同步到编辑器
+  // 父组件外部html同步到编辑器【修复关闭弹窗重开清空素材核心逻辑】
   useEffect(() => {
-    if (lockSyncRef.current || isInsertingRef.current || !editorRef.current) return;
-    const editor = editorRef.current;
-    if (editor.innerHTML !== html) {
-      editor.innerHTML = html || "";
-      cleanEmptyTextNodes(editor);
+    console.log(
+      "[4] sync effect, html =",
+      html?.substring?.(0, 50),
+      "lastSyncedHtmlRef =",
+      lastSyncedHtmlRef.current?.substring?.(0, 50),
+    );
+    // 同步锁开启，直接跳过
+    if (lockSyncRef.current || !editorRef.current) return;
+    // 过滤报错栈内容
+    if (typeof html === "string" && html.includes("Error Component Stack")) {
+      console.warn("[5] 检测到 Error Component Stack，跳过覆写");
+      return;
     }
+
+    // 新增保护：外部传空字符串，但本地有素材，禁止清空DOM
+    const localHasContent = !!lastSyncedHtmlRef.current?.trim();
+    const outerInputEmpty = !html?.trim();
+    if (localHasContent && outerInputEmpty) {
+      console.warn("[拦截] 外部传入空html，本地存在有效素材，禁止清空编辑器");
+      return;
+    }
+
+    // 本地刚操作完，store回传html只更新快照、不覆盖DOM
+    if (isLocalModifyRef.current) {
+      lastSyncedHtmlRef.current = html || "";
+      isLocalModifyRef.current = false;
+      return;
+    }
+
+    // 内容完全一致无需更新
+    if (html === lastSyncedHtmlRef.current) return;
+
+    // 只有合法新html才覆写DOM
+    const editor = editorRef.current;
+    console.warn(
+      "[6] 同步覆写 innerHTML, lastSyncedHtml =",
+      lastSyncedHtmlRef.current?.substring?.(0, 50),
+      "→ html =",
+      html?.substring?.(0, 50),
+    );
+    console.log("[7] 覆写前 innerHTML =", editor.innerHTML);
+    editor.innerHTML = html || "";
+    lastSyncedHtmlRef.current = html || "";
+    console.log("[8] 覆写后 innerHTML =", editor.innerHTML);
+    cleanEmptyTextNodes(editor);
   }, [html, cleanEmptyTextNodes]);
 
   return (
@@ -552,6 +695,7 @@ const PromptInputArea = ({
         {/* 内层富文本渲染层，不携带滚动限制 */}
         <div
           ref={editorRef}
+          id="zyg-prompt-editor"
           className={`${styles.contentEditor} nodrag nopan`}
           contentEditable="true"
           data-placeholder="描述你想要生成的画面内容, @引用素材"
@@ -582,7 +726,9 @@ const PromptInputArea = ({
                 <img src={item.image} alt="" className={styles.itemThumb} />
                 <span className={styles.itemLabel}>{item.label}</span>
               </div>
-              <span className={styles.itemIdTag}>@{item.id?.slice(-8) || idx}</span>
+              <span className={styles.itemIdTag}>
+                @图{assetIdToSeqRef.current.get(item.id) ?? "?"}
+              </span>
             </div>
           ))}
         </div>

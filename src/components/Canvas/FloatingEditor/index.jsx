@@ -76,9 +76,35 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       const updatedRefAssetList = currentRefAssetList.filter(
         (asset) => asset.id !== mediaRef.id
       );
-      updateNodeData(activeNodeId, { refAssetList: updatedRefAssetList });
 
-      // 2. 找到对应的边并删除
+      // 2. 直接基于真实编辑器 DOM 清理原子块，避免 prompt state 与 DOM 脱节
+      const editorEl = document.getElementById("zyg-prompt-editor");
+      console.log("[remove-media] editorEl=", !!editorEl, "editorInnerHTML=", editorEl ? editorEl.innerHTML : null);
+      const currentPrompt = editorEl ? editorEl.innerHTML : promptRef.current || "";
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(currentPrompt, "text/html");
+      const tags = doc.querySelectorAll(`[data-asset-id="${mediaRef.id}"]`);
+      console.log("[remove-media] before cleanup tags=", tags.length, "currentPrompt=", currentPrompt);
+      tags.forEach((tag) => {
+        const outerShell = tag.closest('[contenteditable="false"]');
+        if (outerShell) outerShell.remove();
+      });
+      const cleanedPrompt = doc.body.innerHTML;
+      console.log("[remove-media] after cleanup cleanedPrompt=", cleanedPrompt);
+      if (editorEl) {
+        editorEl.innerHTML = cleanedPrompt;
+      }
+
+      // 3. 更新 store
+      updateNodeData(activeNodeId, {
+        refAssetList: updatedRefAssetList,
+        prompt: cleanedPrompt,
+      });
+
+      // 4. 同步本地 prompt state，让 PromptInputArea 接收到新的 html
+      setPrompt(cleanedPrompt);
+
+      // 5. 找到对应的边并删除
       if (mediaRef.sourceNodeId) {
         removeEdgesBySourceNode(mediaRef.sourceNodeId, activeNodeId);
       }
@@ -88,6 +114,10 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
 
   // 全局状态统一放在父组件
   const [prompt, setPrompt] = useState("");
+  const promptRef = useRef(prompt);
+  useEffect(() => {
+    promptRef.current = prompt;
+  }, [prompt]);
   const [styleValue, setStyleValue] = useState("default");
   const [imageUrl, setImageUrl] = useState("");
   const [params, setParams] = useState({
@@ -118,6 +148,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
 
       // 设置新的定时器，300ms 后保存
       saveTimerRef.current = setTimeout(() => {
+        console.log('[3] 300ms 防抖到期，真正写入 store, updates =', updates);
         updateNodeData(activeNodeId, updates);
         saveTimerRef.current = null;
       }, 300);
@@ -128,6 +159,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   // prompt 变化时同步到 node.data
   const handlePromptChange = useCallback(
     (newHtml) => {
+      console.log('[2] handlePromptChange 收到 newHtml =', newHtml);
       setPrompt(newHtml);
       syncToNodeData({ prompt: newHtml });
     },

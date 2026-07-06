@@ -85,6 +85,75 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
   const isVideo = nodeData.media_type === "video";
   const hasContent = !!nodeData.fullurl;
 
+  const processPendingUpload = useMemo(() => nodeData.pendingFile, [nodeData.pendingFile]);
+
+  useEffect(() => {
+    if (!processPendingUpload || uploading || hasContent) return;
+
+    const file = processPendingUpload;
+    (async () => {
+      try {
+        setUploading(true);
+        setUploadProgress(0);
+
+        let originWidth = DEFAULT_NODE_WIDTH;
+        let originHeight = DEFAULT_NODE_WIDTH;
+        const isVideoFile = ["video/mp4", "video/mov"].includes(file.type);
+
+        if (!isVideoFile) {
+          const urlObj = URL.createObjectURL(file);
+          const img = new Image();
+          await new Promise((resolve) => {
+            img.onload = () => {
+              originWidth = img.naturalWidth;
+              originHeight = img.naturalHeight;
+              URL.revokeObjectURL(urlObj);
+              resolve();
+            };
+            img.src = urlObj;
+          });
+        } else {
+          const urlObj = URL.createObjectURL(file);
+          const tempVideo = document.createElement("video");
+          tempVideo.muted = true;
+          tempVideo.src = urlObj;
+          await new Promise((resolve) => {
+            tempVideo.onloadedmetadata = () => {
+              originWidth = tempVideo.videoWidth;
+              originHeight = tempVideo.videoHeight;
+              URL.revokeObjectURL(urlObj);
+              resolve();
+            };
+          });
+        }
+
+        const result = await uploadMedia(file, {}, (percent) => {
+          setUploadProgress(percent);
+        });
+
+        const url = result.url || result.fullurl;
+        const fullurl = result.fullurl || url;
+
+        const payload = {
+          url,
+          fullurl,
+          name: file.name,
+          media_type: isVideoFile ? "video" : "image",
+          aspect_ratio: DEFAULT_ASPECT_RATIO,
+          width: originWidth,
+          height: originHeight,
+        };
+
+        updateNodeData(id, payload);
+      } catch (error) {
+        console.error("上传失败:", error);
+      } finally {
+        setUploading(false);
+        setUploadProgress(0);
+      }
+    })();
+  }, [processPendingUpload, id, uploading, hasContent, updateNodeData]);
+
   // 动态计算节点尺寸：有原生宽高就用原生比例，无则走默认比例
   const nodeSize = useMemo(() => {
     // 图片 / 视频 只要存在原生宽高，统一用真实素材比例

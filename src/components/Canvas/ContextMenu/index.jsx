@@ -15,6 +15,7 @@ import { useEffect, useRef } from "react";
  */
 const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
   const menuRef = useRef(null);
+  const uploadInputRef = useRef(null);
   const {
     contextMenu,
     clipboard,
@@ -64,6 +65,21 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
   }, [contextMenu.visible, hideContextMenu]);
 
   if (!contextMenu.visible) return null;
+
+  const handleUploadFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file || !onAddUpload) return;
+
+    const menuX = Number(uploadInputRef.current?.dataset.menuX || contextMenu.x);
+    const menuY = Number(uploadInputRef.current?.dataset.menuY || contextMenu.y);
+
+    onAddUpload({ x: menuX, y: menuY, file });
+    hideContextMenu();
+
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = "";
+    }
+  };
 
   /**
    * 复制选中的节点到剪贴板
@@ -115,8 +131,11 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
    * 在菜单位置添加上传素材节点
    */
   const handleAddUpload = () => {
-    onAddUpload?.({ x: contextMenu.x, y: contextMenu.y });
-    hideContextMenu();
+    if (uploadInputRef.current) {
+      uploadInputRef.current.dataset.menuX = String(contextMenu.x);
+      uploadInputRef.current.dataset.menuY = String(contextMenu.y);
+      uploadInputRef.current.click();
+    }
   };
 
   /**
@@ -196,6 +215,13 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
           boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
           minWidth: "160px",
         }}
+      />
+      <input
+        ref={uploadInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/mov"
+        style={{ display: "none" }}
+        onChange={handleUploadFileChange}
       />
     </div>
   );

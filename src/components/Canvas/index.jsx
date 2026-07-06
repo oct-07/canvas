@@ -400,7 +400,7 @@ const CanvasContent = () => {
         id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: "upload",
         position,
-        data: {},
+        data: menuPos.file ? { pendingFile: menuPos.file } : {},
       };
       addNode(newNode);
     },

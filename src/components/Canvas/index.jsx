@@ -77,8 +77,14 @@ const CanvasContent = () => {
       const node = nodes.find((n) => n.id === nodeId);
       if (!node) return;
 
-      // 设置选中节点（触发节点选中样式 + 侧边栏列表高亮联动）
-      setSelectedNode(nodeId);
+      // 同时更新 store.nodes 中的 selected 字段，使节点触发高亮样式
+      useCanvasStore.setState((state) => ({
+        selectedNodeId: nodeId,
+        nodes: state.nodes.map((n) => ({
+          ...n,
+          selected: n.id === nodeId,
+        })),
+      }));
 
       // 居中定位：使用 setCenter 将节点移至视口中心
       const zoom = useCanvasStore.getState().viewport?.zoom ?? 1;
@@ -91,7 +97,7 @@ const CanvasContent = () => {
         },
       );
     },
-    [nodes, setSelectedNode, setCenter],
+    [nodes, setCenter],
   );
 
   // ReactFlow selection change → 同步到侧边栏高亮

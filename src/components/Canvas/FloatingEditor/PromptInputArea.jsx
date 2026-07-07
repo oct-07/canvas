@@ -1,3 +1,4 @@
+import { Dropdown } from "antd";
 import { useCallback, useEffect, useRef, useState } from "react";
 import styles from "./PromptInputArea.module.css";
 
@@ -60,10 +61,8 @@ const PromptInputArea = ({
   const lastSyncedHtmlRef = useRef(html); // 已同步的html快照，用于判断是否真正需要覆写
   const isLocalModifyRef = useRef(false); // 标记本次html变更是否来自本地操作，阻断store回写循环
 
-  // @素材弹窗状态
+  // @素材弹窗状态（仅受控显隐，定位交给Dropdown）
   const [mentionVisible, setMentionVisible] = useState(false);
-  const [popoverStyle, setPopoverStyle] = useState({ left: 0, top: 0 });
-  const [selectedIndex, setSelectedIndex] = useState(0);
   const savedRangeRef = useRef(null);
   const replaceTargetRef = useRef(null);
   const mentionVisibleRef = useRef(false); // 用 ref 追踪弹窗可见性，避免闭包问题
@@ -219,32 +218,6 @@ const PromptInputArea = ({
       savedRangeRef.current = sel.getRangeAt(0).cloneRange();
   }, []);
 
-  // ==================== 弹窗定位：右侧溢出自动左移 ====================
-  const updatePopoverPosition = useCallback(() => {
-    const editor = editorRef.current;
-    const wrap = wrapRef.current;
-    if (!editor || !wrap) return;
-    const sel = window.getSelection();
-    if (!sel.rangeCount) return;
-
-    const range = sel.getRangeAt(0);
-    const caretRect = range.getBoundingClientRect();
-    const wrapRect = wrap.getBoundingClientRect();
-    const popoverWidth = 260;
-    let baseLeft = caretRect.left - wrapRect.left;
-    const popoverRight = baseLeft + popoverWidth;
-    const wrapInnerWidth = wrap.clientWidth;
-
-    // 右侧超出容器，弹窗左移
-    if (popoverRight > wrapInnerWidth) baseLeft = baseLeft - popoverWidth;
-    if (baseLeft < 8) baseLeft = 8;
-
-    setPopoverStyle({
-      left: baseLeft,
-      top: caretRect.bottom - wrapRect.top + 8,
-    });
-  }, []);
-
   // ==================== 创建原子块DOM（外层不可编辑隔离壳，固定单行高度不撑高滚动容器） ====================
   const createAssetTag = useCallback(
     (item) => {
@@ -262,17 +235,11 @@ const PromptInputArea = ({
       tagEl.style.maxHeight = "26px";
       tagEl.style.overflow = "hidden";
 
-      // 点击替换弹窗逻辑不变
+      // 点击唤起Dropdown下拉框，不再手动计算坐标
       tagEl.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
         replaceTargetRef.current = tagEl;
-        const rect = tagEl.getBoundingClientRect();
-        const wrapRect = wrapRef.current.getBoundingClientRect();
-        setPopoverStyle({
-          left: rect.left - wrapRect.left,
-          top: rect.bottom - wrapRect.top + 6,
-        });
         setMentionVisible(true);
         mentionVisibleRef.current = true;
       });
@@ -328,7 +295,6 @@ const PromptInputArea = ({
   // ==================== 插入@素材 ====================
   const insertAssetTag = useCallback(
     (item) => {
-      console.log("[0] insertAssetTag 被调用, item =", item);
       const editor = editorRef.current;
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
@@ -391,7 +357,6 @@ const PromptInputArea = ({
       isLocalModifyRef.current = true;
       const newHtml = editor.innerHTML;
       lastSyncedHtmlRef.current = newHtml;
-      console.log("[1] insertAssetTag 即将 onChangeHtml, newHtml =", newHtml);
       onChangeHtml(newHtml);
 
       // 获取当前完整的 assetList 并添加新插入的素材
@@ -408,7 +373,6 @@ const PromptInputArea = ({
 
       // 延迟解锁，对齐防抖300ms周期
       setTimeout(() => {
-        console.log("[6] setTimeout 解锁 lockSync 和 isInserting");
         lockSyncRef.current = false;
         isInsertingRef.current = false;
       }, 320);
@@ -466,43 +430,10 @@ const PromptInputArea = ({
     [createAssetTag, onChangeHtml, onChangeAssetList, getCurrentAssetList],
   );
 
-  // 重置选中状态
-  const resetSelection = () => {
-    setMentionVisible(false);
-    mentionVisibleRef.current = false;
-    setSelectedIndex(0);
-  };
-
   // 弹窗素材点击统一入口
   const handleSelectAsset = (item) => {
-    console.log("[开始] handleSelectAsset", {
-      item,
-      replaceTarget: replaceTargetRef.current,
-    });
     if (replaceTargetRef.current) replaceAssetTag(item);
     else insertAssetTag(item);
-    resetSelection();
-  };
-
-  // 上移选中项
-  const handleMoveUp = () => {
-    setSelectedIndex((prev) =>
-      prev > 0 ? prev - 1 : localAssetList.length - 1,
-    );
-  };
-
-  // 下移选中项
-  const handleMoveDown = () => {
-    setSelectedIndex((prev) =>
-      prev < localAssetList.length - 1 ? prev + 1 : 0,
-    );
-  };
-
-  // 确认选中
-  const handleConfirm = () => {
-    if (localAssetList.length > 0 && selectedIndex >= 0) {
-      handleSelectAsset(localAssetList[selectedIndex]);
-    }
   };
 
   // ==================== 原生事件处理 ====================
@@ -513,24 +444,18 @@ const PromptInputArea = ({
     isLocalModifyRef.current = true;
     onChangeHtml(html);
     cleanEmptyTextNodes(editorRef.current);
-    if (mentionVisible) updatePopoverPosition();
-  }, [
-    onChangeHtml,
-    mentionVisible,
-    updatePopoverPosition,
-    cleanEmptyTextNodes,
-  ]);
+  }, [onChangeHtml, cleanEmptyTextNodes]);
 
   // 监听@字符唤起弹窗
   const handleKeyUp = useCallback(
     (e) => {
-      // 关闭弹窗时重置选中状态
+      // ESC 关闭下拉
       if (e.key === "Escape" && mentionVisibleRef.current) {
-        resetSelection();
+        setMentionVisible(false);
+        mentionVisibleRef.current = false;
         return;
       }
 
-      // 弹窗已打开时不重复触发 @ 检测，避免重置 selectedIndex
       if (mentionVisibleRef.current) return;
 
       const sel = window.getSelection();
@@ -541,42 +466,17 @@ const PromptInputArea = ({
       if (textNode.nodeType !== Node.TEXT_NODE || offset < 1) return;
       if (textNode.textContent[offset - 1] === "@") {
         saveCurrentRange();
-        updatePopoverPosition();
         setMentionVisible(true);
         mentionVisibleRef.current = true;
-        setSelectedIndex(0);
       }
     },
-    [saveCurrentRange, updatePopoverPosition, resetSelection],
+    [saveCurrentRange],
   );
 
   // 退格删除整块原子块（修复TextNode closest报错）
   const handleKeyDown = useCallback(
     (e) => {
-      // 弹窗打开时的键盘导航（使用 ref 避免闭包问题）
-      if (mentionVisibleRef.current) {
-        if (e.key === "ArrowUp") {
-          e.preventDefault();
-          handleMoveUp();
-          return;
-        }
-        if (e.key === "ArrowDown") {
-          e.preventDefault();
-          handleMoveDown();
-          return;
-        }
-        if (e.key === "Enter") {
-          e.preventDefault();
-          handleConfirm();
-          return;
-        }
-        if (e.key === "Escape") {
-          e.preventDefault();
-          resetSelection();
-          return;
-        }
-      }
-
+      // Dropdown 原生支持上下回车ESC，此处不再手动处理弹窗快捷键
       if (e.key !== "Backspace") return;
       const sel = window.getSelection();
       if (!sel.rangeCount) return;
@@ -651,34 +551,11 @@ const PromptInputArea = ({
       sel.removeAllRanges();
       sel.addRange(newRange);
     },
-    [
-      onChangeHtml,
-      onChangeAssetList,
-      getCurrentAssetList,
-      handleMoveUp,
-      handleMoveDown,
-      handleConfirm,
-      rebuildSeqMap,
-    ],
+    [onChangeHtml, onChangeAssetList, getCurrentAssetList, rebuildSeqMap],
   );
 
-  // 点击输入框刷新弹窗位置
-  const handleEditorClick = useCallback(() => {
-    if (mentionVisible) updatePopoverPosition();
-  }, [mentionVisible, updatePopoverPosition]);
-
-  // 全局空白处关闭弹窗
-  useEffect(() => {
-    const closePop = (e) => {
-      const popover = document.querySelector(`.${styles.mentionPopover}`);
-      if (wrapRef.current && popover && !wrapRef.current.contains(e.target)) {
-        setMentionVisible(false);
-        mentionVisibleRef.current = false;
-      }
-    };
-    window.addEventListener("mousedown", closePop);
-    return () => window.removeEventListener("mousedown", closePop);
-  }, []);
+  // 点击输入框刷新弹窗位置交由Dropdown内部处理，无需额外逻辑
+  const handleEditorClick = useCallback(() => {}, []);
 
   // 拦截粘贴，仅保留纯文本，避免带入外部 HTML 样式（div 块、border 等）
   const handlePaste = useCallback((e) => {
@@ -701,17 +578,9 @@ const PromptInputArea = ({
 
   // 父组件外部html同步到编辑器【修复关闭弹窗重开清空素材核心逻辑】
   useEffect(() => {
-    console.log(
-      "[4] sync effect, html =",
-      html?.substring?.(0, 50),
-      "lastSyncedHtmlRef =",
-      lastSyncedHtmlRef.current?.substring?.(0, 50),
-    );
-    // 同步锁开启，直接跳过
     if (lockSyncRef.current || !editorRef.current) return;
     // 过滤报错栈内容
     if (typeof html === "string" && html.includes("Error Component Stack")) {
-      console.warn("[5] 检测到 Error Component Stack，跳过覆写");
       return;
     }
 
@@ -719,7 +588,6 @@ const PromptInputArea = ({
     const localHasContent = !!lastSyncedHtmlRef.current?.trim();
     const outerInputEmpty = !html?.trim();
     if (localHasContent && outerInputEmpty) {
-      console.warn("[拦截] 外部传入空html，本地存在有效素材，禁止清空编辑器");
       return;
     }
 
@@ -735,21 +603,96 @@ const PromptInputArea = ({
 
     // 只有合法新html才覆写DOM
     const editor = editorRef.current;
-    console.warn(
-      "[6] 同步覆写 innerHTML, lastSyncedHtml =",
-      lastSyncedHtmlRef.current?.substring?.(0, 50),
-      "→ html =",
-      html?.substring?.(0, 50),
-    );
-    console.log("[7] 覆写前 innerHTML =", editor.innerHTML);
     editor.innerHTML = html || "";
     lastSyncedHtmlRef.current = html || "";
-    console.log("[8] 覆写后 innerHTML =", editor.innerHTML);
     cleanEmptyTextNodes(editor);
   }, [html, cleanEmptyTextNodes]);
 
+  // 构造Dropdown菜单列表
+  const dropdownMenuItems = localAssetList.map((item, idx) => {
+    const seq = assetIdToSeqRef.current.get(item.id) ?? "";
+    const prefix = getAssetRefPrefix(item);
+    return {
+      key: item.id || idx,
+      onClick: () => handleSelectAsset(item),
+      label: (
+        <div
+          style={{ display: "flex", alignItems: "center", gap: 8, width: 240 }}
+        >
+          {isVideoItem(item) ? (
+            <video
+              src={item.url}
+              muted
+              playsInline
+              preload="metadata"
+              style={{
+                width: 28,
+                height: 28,
+                objectFit: "cover",
+                borderRadius: 4,
+              }}
+              onLoadedMetadata={(ev) => {
+                try {
+                  ev.target.currentTime = 0.1;
+                } catch (err) {}
+              }}
+            />
+          ) : (
+            <img
+              src={item.image}
+              alt=""
+              style={{
+                width: 28,
+                height: 28,
+                objectFit: "cover",
+                borderRadius: 4,
+              }}
+            />
+          )}
+          <span
+            style={{
+              flex: 1,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {item.label}
+          </span>
+          <span style={{ color: "#8c8c8c", fontSize: 12 }}>
+            {prefix}
+            {seq}
+          </span>
+        </div>
+      ),
+    };
+  });
+
   return (
     <div ref={wrapRef} className={styles.editorWrap}>
+      <Dropdown
+        open={mentionVisible && localAssetList.length > 0}
+        onOpenChange={(open) => {
+          setMentionVisible(open);
+          mentionVisibleRef.current = open;
+        }}
+        trigger={[]}
+        placement="bottomLeft"
+        getPopupContainer={() => wrapRef.current}
+        menu={{ items: dropdownMenuItems }}
+      >
+        {/* 隐形锚点元素，Dropdown必须挂载触发节点 */}
+        <span
+          style={{
+            position: "absolute",
+            width: 0,
+            height: 0,
+            opacity: 0,
+            pointerEvents: "none",
+          }}
+        />
+      </Dropdown>
+
       {/* 外层滚动容器：真正控制max-height、overflow，解决contenteditable滚动bug */}
       <div
         ref={scrollWrapRef}
@@ -772,48 +715,6 @@ const PromptInputArea = ({
           tabIndex={0}
         />
       </div>
-
-      {/* @素材下拉弹窗 */}
-      {mentionVisible && localAssetList.length > 0 && (
-        <div
-          className={`${styles.mentionPopover} nodrag nopan`}
-          style={popoverStyle}
-        >
-          {localAssetList.map((item, idx) => (
-            <div
-              key={item.id || `asset-${idx}`}
-              className={`${styles.mentionItem} ${idx === selectedIndex ? styles.mentionItemActive : ""}`}
-              onClick={() => handleSelectAsset(item)}
-              onMouseEnter={() => setSelectedIndex(idx)}
-            >
-              <div className={styles.itemLeft}>
-                {isVideoItem(item) ? (
-                  <video
-                    src={item.url}
-                    className={styles.itemThumb}
-                    muted
-                    playsInline
-                    preload="metadata"
-                    onLoadedMetadata={(e) => {
-                      try {
-                        e.currentTarget.currentTime = 0.1;
-                      } catch (_) {
-                        /* 忽略 */
-                      }
-                    }}
-                  />
-                ) : (
-                  <img src={item.image} alt="" className={styles.itemThumb} />
-                )}
-                <span className={styles.itemLabel}>{item.label}</span>
-              </div>
-              <span className={styles.itemIdTag}>
-                {`${getAssetRefPrefix(item)}${assetIdToSeqRef.current.get(item.id) ?? "?"}`}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

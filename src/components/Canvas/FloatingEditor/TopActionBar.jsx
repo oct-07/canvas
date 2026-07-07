@@ -206,7 +206,7 @@ const RefImagePreviewBar = ({
         })}
       </div>
       {/* 隐藏横向滚动条（webkit浏览器兼容） */}
-      <style jsx global>{`
+      <style>{`
         .ref-scroll-wrap::-webkit-scrollbar {
           display: none;
         }

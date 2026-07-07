@@ -51,7 +51,14 @@ export const createNodesSlice = (getStore, setStore) => ({
   /**
    * 设置选中节点
    */
-  setSelectedNode: (nodeId) => setStore({ selectedNodeId: nodeId, selectedEdgeId: null }),
+  setSelectedNode: (nodeId) => setStore((state) => ({
+    selectedNodeId: nodeId,
+    selectedEdgeId: null,
+    nodes: state.nodes.map((n) => ({
+      ...n,
+      selected: n.id === nodeId,
+    })),
+  })),
 
   /**
    * 添加节点

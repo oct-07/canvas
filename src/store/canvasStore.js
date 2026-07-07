@@ -63,11 +63,12 @@ const useCanvasStore = create((set, get) => {
 
     // 清空选中（同时隐藏连线悬停删除图标）
     clearSelection: () =>
-      set({
+      set((state) => ({
         selectedNodeId: null,
         selectedEdgeId: null,
         hoverDeleteEdgeId: null,
-      }),
+        nodes: state.nodes.map((n) => ({ ...n, selected: false })),
+      })),
 
     // 重置画布
     resetCanvas: () => {

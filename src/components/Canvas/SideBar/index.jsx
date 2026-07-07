@@ -247,6 +247,7 @@ const SideBar = ({ collapsed, onToggle, selectedNodeId, onNodeSelect }) => {
 
             return (
               <div
+                key={node.id}
                 draggable
                 onDragStart={(e) => handleDragStart(e, node)}
                 onDragEnd={handleDragEnd}

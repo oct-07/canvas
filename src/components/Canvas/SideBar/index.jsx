@@ -1,4 +1,5 @@
 import useCanvasStore from "@/store/canvasStore";
+import { getThumbUrl } from "@/utils/thumbnail";
 import {
   DownOutlined,
   MenuFoldOutlined,
@@ -14,10 +15,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
  * 侧边栏组件 - 画布元素导航列表
  * 展示画布上已存在的图片/视频节点，支持筛选、搜索、拖拽复用
  */
-const SideBar = ({ collapsed, onToggle }) => {
+const SideBar = ({ collapsed, onToggle, selectedNodeId, onNodeSelect }) => {
   const sideBarRef = useRef(null);
 
-  // 侧边栏不缩放
+  // 侧边栏禁止ctrl滚轮缩放
   useEffect(() => {
     const handleWheel = (e) => {
       if (e.ctrlKey && sideBarRef.current?.contains(e.target)) {
@@ -29,7 +30,7 @@ const SideBar = ({ collapsed, onToggle }) => {
     return () => document.removeEventListener("wheel", handleWheel);
   }, []);
 
-  // 读取节点切片状态
+  // 读取画布全局状态
   const {
     nodes,
     elementFilter,
@@ -40,18 +41,28 @@ const SideBar = ({ collapsed, onToggle }) => {
 
   const [draggedItem, setDraggedItem] = useState(null);
 
-  // 拖拽节点
+  // 拖拽开始
   const handleDragStart = useCallback((e, item) => {
     setDraggedItem(item);
     e.dataTransfer.setData("application/json", JSON.stringify(item));
     e.dataTransfer.effectAllowed = "copy";
   }, []);
 
+  // 拖拽结束
   const handleDragEnd = useCallback(() => {
     setDraggedItem(null);
   }, []);
 
-  // 下拉菜单配置
+  // 点击选中画布节点并定位
+  const handleItemClick = useCallback(
+    (e, node) => {
+      if (draggedItem) return;
+      onNodeSelect?.(node.id);
+    },
+    [draggedItem, onNodeSelect],
+  );
+
+  // 筛选下拉菜单
   const filterMenuItems = [
     { key: "all", label: "全部" },
     { key: "image", label: "图片" },
@@ -63,24 +74,52 @@ const SideBar = ({ collapsed, onToggle }) => {
     onClick: ({ key }) => setElementFilter(key),
   };
 
-  // 关键修复：find兜底，找不到返回 {label:'全部'}
   const matchItem = filterMenuItems.find((i) => i.key === elementFilter);
   const currentFilterText = matchItem?.label ?? "全部";
 
-  // 1. 类型过滤
+  // 判断链接是否为视频
+  const isVideoUrl = (url) => /\.(mp4|mov|webm|avi|flv|m4v)$/i.test(url ?? "");
+
+  // 类型过滤
   let sourceNodes = [...nodes];
   if (elementFilter === "image") {
-    sourceNodes = sourceNodes.filter((node) => node.type === "image");
+    sourceNodes = sourceNodes.filter((node) => {
+      if (node.type === "image") return true;
+      if (node.type === "upload") return !isVideoUrl(node.data?.fullurl);
+      return false;
+    });
   } else if (elementFilter === "video") {
-    sourceNodes = sourceNodes.filter((node) => node.type === "video");
+    sourceNodes = sourceNodes.filter((node) => {
+      if (node.type === "video") return true;
+      if (node.type === "upload") return isVideoUrl(node.data?.fullurl);
+      return false;
+    });
   }
 
-  // 2. 搜索过滤
-  const filteredNodes = sourceNodes.filter((node) =>
-    node.name?.toLowerCase().includes(elementSearch.toLowerCase()),
-  );
+  // 搜索过滤
+  const filteredNodes = sourceNodes.filter((node) => {
+    const name = node.data?.name ?? "";
+    const keyword = elementSearch ?? "";
+    return name.toLowerCase().includes(keyword.toLowerCase());
+  });
 
-  // 收起状态
+  // 提取素材原始url
+  const getNodeUrl = useCallback((node) => {
+    const d = node.data || {};
+    if (
+      node.type === "image" ||
+      node.type === "upload" ||
+      node.type === "video"
+    ) {
+      return d.fullurl || "";
+    }
+    return "";
+  }, []);
+
+  const THUMB_W = 48;
+  const THUMB_H = 36;
+
+  // 侧边栏收起状态
   if (collapsed) {
     return (
       <div
@@ -125,7 +164,7 @@ const SideBar = ({ collapsed, onToggle }) => {
         borderRadius: "10px",
       }}
     >
-      {/* 顶部标题栏 + 筛选下拉 + 收起按钮 */}
+      {/* 顶部标题+筛选+收起按钮 */}
       <div
         style={{
           padding: "14px 16px",
@@ -182,7 +221,7 @@ const SideBar = ({ collapsed, onToggle }) => {
         />
       </div>
 
-      {/* 节点列表区域 */}
+      {/* 列表区域 */}
       <div
         style={{
           flex: 1,
@@ -201,64 +240,153 @@ const SideBar = ({ collapsed, onToggle }) => {
             暂无匹配画布节点
           </div>
         ) : (
-          filteredNodes.map((node) => (
-            <Tooltip title={node.name} key={node.id} placement="right">
+          filteredNodes.map((node) => {
+            const nodeUrl = getNodeUrl(node);
+            const thumbUrl = getThumbUrl(nodeUrl);
+            const isHighlighted = selectedNodeId === node.id;
+
+            return (
               <div
                 draggable
                 onDragStart={(e) => handleDragStart(e, node)}
                 onDragEnd={handleDragEnd}
+                onClick={(e) => handleItemClick(e, node)}
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 12,
-                  padding: "10px 16px",
+                  padding: "8px 16px",
                   cursor: "grab",
                   transition: "background 0.2s ease",
+                  background: isHighlighted
+                    ? "rgba(23, 125, 220, 0.18)"
+                    : "transparent",
+                  borderLeft: isHighlighted
+                    ? "2px solid #177ddc"
+                    : "2px solid transparent",
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = "#2b2b2b";
+                  if (!isHighlighted) {
+                    e.currentTarget.style.background = "#2b2b2b";
+                  }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
+                  if (!isHighlighted) {
+                    e.currentTarget.style.background = "transparent";
+                  }
                 }}
               >
-                {/* 节点类型图标 */}
+                {/* 缩略容器 */}
                 <div
                   style={{
-                    width: 36,
-                    height: 36,
+                    width: THUMB_W,
+                    height: THUMB_H,
                     borderRadius: 6,
-                    background: "#383838",
+                    overflow: "hidden",
+                    flexShrink: 0,
+                    background: "#2a2a2a",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    flexShrink: 0,
+                    border: "1px solid #3a3a3a",
                   }}
                 >
-                  {node.type === "image" ? (
-                    <PictureOutlined style={{ color: "#ddd", fontSize: 18 }} />
+                  {nodeUrl ? (
+                    isVideoUrl(nodeUrl) ? (
+                      <video
+                        src={nodeUrl}
+                        muted
+                        preload="metadata"
+                        playsInline
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          borderRadius: 6,
+                          background: "#1f1f1f",
+                        }}
+                        onLoadedMetadata={(e) => {
+                          try {
+                            e.currentTarget.currentTime = 0.1;
+                          } catch (_) {}
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src={thumbUrl}
+                        alt={node.data?.name || "缩略图"}
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                        onError={(e) => {
+                          e.target.style.display = "none";
+                        }}
+                      />
+                    )
+                  ) : node.type === "image" ||
+                    (node.type === "upload" && !isVideoUrl(nodeUrl)) ? (
+                    <PictureOutlined style={{ color: "#666", fontSize: 18 }} />
                   ) : (
                     <VideoCameraOutlined
-                      style={{ color: "#ddd", fontSize: 18 }}
+                      style={{ color: "#666", fontSize: 18 }}
                     />
                   )}
                 </div>
-                {/* 节点名称超长省略 */}
-                <span
+
+                {/* 名称+类型标签 */}
+                <div
                   style={{
-                    color: "#f0f0f0",
-                    fontSize: 14,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 3,
                     flex: 1,
+                    minWidth: 0,
                   }}
                 >
-                  {node.name}
-                </span>
+                  <span
+                    style={{
+                      color: isHighlighted ? "#fff" : "#f0f0f0",
+                      fontSize: 13,
+                      fontWeight: isHighlighted ? 500 : 400,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {node.data?.name}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: "#888",
+                      lineHeight: 1,
+                    }}
+                  >
+                    {isVideoUrl(nodeUrl) ? "视频" : "图片"}
+                  </span>
+                </div>
+
+                {/* 选中圆点标记 */}
+                {isHighlighted && (
+                  <div
+                    style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: "50%",
+                      background: "#177ddc",
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
               </div>
-            </Tooltip>
-          ))
+            );
+          })
         )}
       </div>
     </div>

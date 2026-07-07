@@ -23,6 +23,8 @@ import { getNodeScreenPos } from "@/utils/canvasEditor";
 import { isEditableElement } from "@/utils/dom";
 
 const CanvasContent = () => {
+  const { setCenter, screenToFlowPosition } = useReactFlow();
+
   //自定义连线类型
   const edgeTypes = useMemo(
     () => ({
@@ -30,7 +32,6 @@ const CanvasContent = () => {
     }),
     [],
   );
-  const { screenToFlowPosition } = useReactFlow();
 
   // 拖动前快照：记录本次拖动开始前，被拖节点是否已经打开了提示词框
   // draggedId: 当前正在拖动的节点id
@@ -61,14 +62,51 @@ const CanvasContent = () => {
     hideContextMenu,
     hideActiveEditor,
     removeNode,
-    // 设置拖动中的节点（拖动期间隐藏其浮窗）
     setDraggingNodeId,
-    // 预加载模型参数
     loadModelSkuParams,
+    selectedNodeId,
+    setSelectedNode,
   } = useCanvasStore();
 
   const setGlobalStyle = useStyleStore((state) => state.setGlobalStyle);
   const fetchStyleList = useStyleStore((state) => state.fetchStyleList);
+
+  // 侧边栏节点选中回调：选中节点并将其居中定位至画布视口
+  const handleSidebarNodeSelect = useCallback(
+    (nodeId) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (!node) return;
+
+      // 设置选中节点（触发节点选中样式 + 侧边栏列表高亮联动）
+      setSelectedNode(nodeId);
+
+      // 居中定位：使用 setCenter 将节点移至视口中心
+      const zoom = useCanvasStore.getState().viewport?.zoom ?? 1;
+      setCenter(
+        node.position.x + (node.measured?.width ?? 200) / 2,
+        node.position.y + (node.measured?.height ?? 150) / 2,
+        {
+          zoom,
+          duration: 400,
+        },
+      );
+    },
+    [nodes, setSelectedNode, setCenter],
+  );
+
+  // ReactFlow selection change → 同步到侧边栏高亮
+  const handleSelectionChange = useCallback(
+    ({ nodes: selectedNodes }) => {
+      if (selectedNodes.length === 1) {
+        setSelectedNode(selectedNodes[0].id);
+      } else if (selectedNodes.length === 0) {
+        // 仅当明确清空选区时才清空 selectedNodeId，避免与其他逻辑冲突
+        const store = useCanvasStore.getState();
+        store.clearSelection();
+      }
+    },
+    [setSelectedNode],
+  );
 
   // 画布挂载时加载所有风格分类 + 两种模型（用 ref 防止 StrictMode 重复调用）
   const loadRef = useRef(false);
@@ -311,6 +349,9 @@ const CanvasContent = () => {
   const handleNodeClick = useCallback((_event, node) => {
     const store = useCanvasStore.getState();
 
+    // 选中节点（驱动侧边栏列表高亮联动）
+    store.setSelectedNode(node.id);
+
     // 已打开：再次点击同一个节点 → 关闭
     if (store.activeNodeId === node.id && store.nodeEditors[node.id]?.visible) {
       store.hideActiveEditor(node.id);
@@ -364,15 +405,16 @@ const CanvasContent = () => {
         x: menuPos.x,
         y: menuPos.y,
       });
+      const imageCount = nodes.filter((n) => n.type === "image").length + 1;
       const newNode = {
         id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: "image",
         position,
-        data: { model_type: "2" },
+        data: { model_type: "2", name: `图片节点${imageCount}` },
       };
       addNode(newNode);
     },
-    [screenToFlowPosition, addNode],
+    [screenToFlowPosition, addNode, nodes],
   );
 
   const handleAddVideo = useCallback(
@@ -381,15 +423,16 @@ const CanvasContent = () => {
         x: menuPos.x,
         y: menuPos.y,
       });
+      const videoCount = nodes.filter((n) => n.type === "video").length + 1;
       const newNode = {
         id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: "video",
         position,
-        data: { model_type: "1" },
+        data: { model_type: "1", name: `视频节点${videoCount}` },
       };
       addNode(newNode);
     },
-    [screenToFlowPosition, addNode],
+    [screenToFlowPosition, addNode, nodes],
   );
 
   const handleAddUpload = useCallback(
@@ -398,15 +441,20 @@ const CanvasContent = () => {
         x: menuPos.x,
         y: menuPos.y,
       });
+      const fileName = menuPos.file?.name || "";
+      const name =
+        fileName ||
+        `上传素材${nodes.filter((n) => n.type === "upload").length + 1}`;
       const newNode = {
         id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         type: "upload",
         position,
-        data: menuPos.file ? { pendingFile: menuPos.file } : {},
+        data: menuPos.file ? { pendingFile: menuPos.file, name } : { name },
       };
+      console.log("[Canvas] handleAddUpload 调用", Date.now());
       addNode(newNode);
     },
-    [screenToFlowPosition, addNode],
+    [screenToFlowPosition, addNode, nodes],
   );
 
   useEffect(() => {
@@ -535,7 +583,12 @@ const CanvasContent = () => {
         flexDirection: "column",
       }}
     >
-      <SideBar collapsed={!isSidebarOpen} onToggle={toggleSidebar} />
+      <SideBar
+        collapsed={!isSidebarOpen}
+        onToggle={toggleSidebar}
+        selectedNodeId={selectedNodeId}
+        onNodeSelect={handleSidebarNodeSelect}
+      />
       <CanvasHeader canvasName={canvasName} />
 
       <div style={flowWrapperStyle}>
@@ -559,6 +612,7 @@ const CanvasContent = () => {
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onNodeClick={handleNodeClick}
+          onSelectionChange={handleSelectionChange}
           nodeTypes={nodeTypes}
           isValidConnection={isValidConnection}
           snapToGrid

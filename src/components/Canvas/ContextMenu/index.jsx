@@ -70,9 +70,17 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
     const file = e.target.files?.[0];
     if (!file || !onAddUpload) return;
 
+    console.log("[ContextMenu] handleUploadFileChange 被调用", Date.now());
+
+    // 停止冒泡，防止触发 document click → hideContextMenu → 菜单卸载
+    // handleAddUpload 中 .click() 触发的文件选择，Menu 已 stopPropagation，
+    // 但保守处理防止其他路径触发
+    e.stopPropagation();
+
     const menuX = Number(uploadInputRef.current?.dataset.menuX || contextMenu.x);
     const menuY = Number(uploadInputRef.current?.dataset.menuY || contextMenu.y);
 
+    // 上传文件选择后，创建带 pendingFile 的节点，实际上传由 UploadMediaNode useEffect 处理
     onAddUpload({ x: menuX, y: menuY, file });
     hideContextMenu();
 

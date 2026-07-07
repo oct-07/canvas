@@ -1,5 +1,6 @@
 import useCanvasStore from "@/store/canvasStore";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
+import { getThumbUrl } from "@/utils/thumbnail";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { Position, useUpdateNodeInternals } from "@xyflow/react";
 import { memo, useEffect, useMemo } from "react";
@@ -98,7 +99,7 @@ const VideoNode = memo(({ id, data, selected }) => {
             style={{
               position: "absolute",
               inset: 0,
-              background: `url(${nodeData.thumbnail}) center/cover no-repeat`,
+              background: `url(${getThumbUrl(nodeData.fullurl)}) center/cover no-repeat`,
             }}
           />
         )}
@@ -114,51 +115,32 @@ const VideoNode = memo(({ id, data, selected }) => {
         >
           <PlayCircleOutlined style={{ color: "#555555", fontSize: "50px" }} />
         </div>
+      </div>
 
+      {/* 节点名称标签，浮动在盒子上方 */}
+      {nodeData.name && (
         <div
           style={{
             position: "absolute",
-            top: 0,
+            top: -28,
             left: 0,
             right: 0,
-            padding: "8px",
-            background:
-              "linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%)",
-            display: "flex",
-            justifyContent: "flex-end",
-          }}
-        />
-
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: "8px",
-            borderRadius: "0 0 12px 12px",
-            background:
-              "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
+            padding: "4px 10px",
+            borderRadius: "8px 8px 0 0",
+            background: "transparent",
+            backdropFilter: "blur(4px)",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 500,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            textAlign: "center",
           }}
         >
-          <span
-            style={{
-              color: "#fff",
-              fontSize: "12px",
-              fontWeight: 500,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              flex: 1,
-            }}
-          >
-            {nodeData.name}
-          </span>
+          {nodeData.name}
         </div>
-      </div>
+      )}
 
       <PlusHandle
         type="target"

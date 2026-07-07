@@ -76,6 +76,8 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  // 用 ref 而非 state 作为 useEffect guard，避免 React batching 导致重复触发
+  const isUploadingRef = useRef(false);
 
   const isThisNodeDragging = draggingNodeId === id;
   const isActive = selected || isThisNodeDragging;
@@ -91,13 +93,19 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
   );
 
   useEffect(() => {
-    if (!processPendingUpload || uploading || hasContent) return;
+    if (!processPendingUpload || isUploadingRef.current || hasContent) return;
+
+    console.log("[UploadMediaNode] useEffect 开始上传", Date.now());
 
     const file = processPendingUpload;
     (async () => {
       try {
+        isUploadingRef.current = true; // 同步设置，防止 batching 导致重复触发
         setUploading(true);
         setUploadProgress(0);
+
+        // 立即清除 pendingFile，防止组件 re-render 导致 useEffect 重复触发上传
+        updateNodeData(id, { pendingFile: null });
 
         let originWidth = DEFAULT_NODE_WIDTH;
         let originHeight = DEFAULT_NODE_WIDTH;
@@ -130,6 +138,7 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
           });
         }
 
+        console.log("[UploadMediaNode] useEffect 调用 uploadMedia", Date.now());
         const result = await uploadMedia(file, {}, (percent) => {
           setUploadProgress(percent);
         });
@@ -151,11 +160,12 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
       } catch (error) {
         console.error("上传失败:", error);
       } finally {
+        isUploadingRef.current = false;
         setUploading(false);
         setUploadProgress(0);
       }
     })();
-  }, [processPendingUpload, id, uploading, hasContent, updateNodeData]);
+  }, [processPendingUpload, id, hasContent, updateNodeData]);
 
   // 动态计算节点尺寸：有原生宽高就用原生比例，无则走默认比例
   const nodeSize = useMemo(() => {
@@ -212,6 +222,7 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
   }, [nodeData.fullurl, isVideo, nodeData.width, uploading]);
 
   const handleFileSelect = async (e) => {
+    console.log("[UploadMediaNode] handleFileSelect 被调用", Date.now());
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -415,6 +426,31 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
       >
         {renderContent()}
       </div>
+
+      {/* 节点名称标签，浮动在盒子上方 */}
+      {nodeData.name && (
+        <div
+          style={{
+            position: "absolute",
+            top: -28,
+            left: 0,
+            right: 0,
+            padding: "4px 10px",
+            borderRadius: "8px 8px 0 0",
+            background: "transparent",
+            backdropFilter: "blur(4px)",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 500,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            textAlign: "center",
+          }}
+        >
+          {nodeData.name}
+        </div>
+      )}
 
       {/* 右侧输出手柄 */}
       <PlusHandle

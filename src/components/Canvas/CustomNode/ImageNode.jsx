@@ -1,5 +1,6 @@
 import useCanvasStore from "@/store/canvasStore";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
+import { getThumbUrl } from "@/utils/thumbnail";
 import { PictureOutlined } from "@ant-design/icons";
 import { Position, useUpdateNodeInternals } from "@xyflow/react";
 import { memo, useEffect, useMemo } from "react";
@@ -84,8 +85,8 @@ const ImageNode = memo(({ id, data, selected }) => {
           inset: 0,
           borderRadius: 12,
           overflow: "hidden",
-          background: nodeData.url || nodeData.thumbnail
-            ? `url(${nodeData.url || nodeData.thumbnail}) center/cover no-repeat`
+          background: nodeData.url
+            ? `url(${getThumbUrl(nodeData.url)}) center/cover no-repeat`
             : "#1f1f1f",
         }}
       >
@@ -102,34 +103,32 @@ const ImageNode = memo(({ id, data, selected }) => {
             <PictureOutlined style={{ fontSize: 46, color: "#555" }} />
           </div>
         )}
+      </div>
 
+      {/* 节点名称标签，浮动在盒子上方 */}
+      {nodeData.name && (
         <div
           style={{
             position: "absolute",
-            bottom: 0,
+            top: -28,
             left: 0,
             right: 0,
-            padding: "6px 10px",
-            borderRadius: "0 0 12px 12px",
-            background:
-              "linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 100%)",
+            padding: "4px 10px",
+            borderRadius: "8px 8px 0 0",
+            background: "transparent",
+            backdropFilter: "blur(4px)",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 500,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            textAlign: "center",
           }}
         >
-          <span
-            style={{
-              color: "#fff",
-              fontSize: 12,
-              fontWeight: 500,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              display: "block",
-            }}
-          >
-            {nodeData.name}
-          </span>
+          {nodeData.name}
         </div>
-      </div>
+      )}
 
       <PlusHandle
         type="target"

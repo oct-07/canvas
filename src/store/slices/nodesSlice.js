@@ -59,6 +59,12 @@ export const createNodesSlice = (getStore, setStore) => ({
         ...n,
         selected: n.id === nodeId,
       })),
+      edges: state.edges.map((edge) => {
+        const isConnected = edge.source === nodeId || edge.target === nodeId;
+        return isConnected
+          ? { ...edge, animated: true }
+          : { ...edge, animated: false };
+      }),
     })),
 
   /**

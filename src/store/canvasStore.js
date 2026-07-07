@@ -68,6 +68,7 @@ const useCanvasStore = create((set, get) => {
         selectedEdgeId: null,
         hoverDeleteEdgeId: null,
         nodes: state.nodes.map((n) => ({ ...n, selected: false })),
+        edges: state.edges.map((e) => ({ ...e, animated: false })),
       })),
 
     // 重置画布

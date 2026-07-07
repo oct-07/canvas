@@ -50,7 +50,13 @@ export const createEdgesSlice = (getStore, setStore) => ({
   /**
    * 设置选中边
    */
-  setSelectedEdge: (edgeId) => setStore({ selectedEdgeId: edgeId, selectedNodeId: null }),
+  setSelectedEdge: (edgeId) =>
+    setStore((state) => ({
+      selectedEdgeId: edgeId,
+      selectedNodeId: null,
+      nodes: state.nodes.map((n) => ({ ...n, selected: false })),
+      edges: state.edges.map((e) => ({ ...e, animated: false })),
+    })),
 
   /**
    * 连线回调

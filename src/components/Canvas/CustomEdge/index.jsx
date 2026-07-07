@@ -51,6 +51,7 @@ export default function CustomEdge({
   targetPosition,
   sourceHandleId,
   targetHandleId,
+  animated,
 }) {
   const { setEdges, screenToFlowPosition } = useReactFlow();
 
@@ -303,11 +304,12 @@ export default function CustomEdge({
         id={id}
         path={edgePath}
         interactionWidth={0}
-        style={{
-          stroke: isActive ? "#666666" : "#ffffff",
-          strokeWidth: STROKE_WIDTH,
-          pointerEvents: "none",
-        }}
+        style={
+          isActive && !animated
+            ? { stroke: "#666666", strokeWidth: STROKE_WIDTH, pointerEvents: "none" }
+            : { strokeWidth: STROKE_WIDTH, pointerEvents: "none" }
+        }
+        animated={animated}
       />
 
       {/* 透明加宽交互路径：命中范围 = 线条 ±HIT_EXTEND flow 单位（屏容差 ≈

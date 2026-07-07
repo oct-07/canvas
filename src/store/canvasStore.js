@@ -183,10 +183,6 @@ const handleBeforeUnload = (e) => {
     edges,
     viewport,
   });
-
-  // 显示确认对话框
-  e.preventDefault();
-  e.returnValue = '';
 };
 
 window.addEventListener('beforeunload', handleBeforeUnload);

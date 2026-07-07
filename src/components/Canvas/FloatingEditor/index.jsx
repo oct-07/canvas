@@ -211,7 +211,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   // 因此 `top: 50%` 已随节点高度变化贡献了「一半」的位移，这里只需再补另一半，
   // 即偏移量 =（当前高度 - 默认高度）/ 2（可正可负），叠加后恰好等于节点底边的
   // 实际位移量，从而保证任意比例（竖版更高 / 横版更矮）、任意缩放下间距都与默认完全一致。
-  const NODE_WIDTH = 260;
+  const NODE_WIDTH = 400;
   const NODE_DEFAULT_HEIGHT = 260;
   const nodeHeightOffset = useMemo(() => {
     const aspectRatio = editor?.data?.aspect_ratio;

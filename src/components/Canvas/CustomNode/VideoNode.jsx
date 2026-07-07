@@ -3,14 +3,14 @@ import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { getThumbUrl } from "@/utils/thumbnail";
 import { PlayCircleOutlined } from "@ant-design/icons";
 import { Position, useUpdateNodeInternals } from "@xyflow/react";
+import { Input } from "antd";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import FloatingEditor from "../FloatingEditor";
-import { Input } from "antd";
 
 // 与图片节点保持一致的默认宽度，确保两种节点初始高宽相同
-const VIDEO_NODE_WIDTH = 260;
+const VIDEO_NODE_WIDTH = 400;
 const DEFAULT_ASPECT_RATIO = "227";
 
 /**

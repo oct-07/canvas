@@ -3,13 +3,13 @@ import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { getThumbUrl } from "@/utils/thumbnail";
 import { PictureOutlined } from "@ant-design/icons";
 import { Position, useUpdateNodeInternals } from "@xyflow/react";
+import { Input } from "antd";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import FloatingEditor from "../FloatingEditor";
-import { Input } from "antd";
 
-const IMAGE_NODE_WIDTH = 260;
+const IMAGE_NODE_WIDTH = 400;
 const DEFAULT_ASPECT_RATIO = "227";
 
 const ImageNode = memo(({ id, data, selected }) => {

@@ -2,6 +2,7 @@ import useCanvasStore from "@/store/canvasStore";
 import {
   ArrowUpOutlined,
   CloudUploadOutlined,
+  CopyOutlined,
   PictureOutlined,
   UpCircleOutlined,
   VideoCameraOutlined,
@@ -22,6 +23,7 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
     copyNode,
     pasteNode,
     removeNode,
+    duplicateNode,
     hideContextMenu,
     selectedNodeId,
   } = useCanvasStore();
@@ -120,6 +122,17 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
   };
 
   /**
+   * 复制选中节点及其关联连线，生成全新副本
+   */
+  const handleDuplicate = () => {
+    if (contextMenu.target === "node" && contextMenu.targetId) {
+      const { duplicateNode } = useCanvasStore.getState();
+      duplicateNode(contextMenu.targetId);
+    }
+    hideContextMenu();
+  };
+
+  /**
    * 在菜单位置添加图片节点
    */
   const handleAddImage = () => {
@@ -187,6 +200,12 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
           label: "复制",
           icon: <UpCircleOutlined />,
           onClick: handleCopy,
+        },
+        {
+          key: "duplicate",
+          label: "创建副本",
+          icon: <CopyOutlined />,
+          onClick: handleDuplicate,
         },
         { type: "divider" },
         {

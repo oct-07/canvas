@@ -272,7 +272,9 @@ export default function StyleSelect({
   const setNodeStyle = useStyleStore((state) => state.setNodeStyle);
   const fetchStyleList = useStyleStore((state) => state.fetchStyleList);
 
-  const currentValue = isGlobal ? globalStyle : nodeStyleMap[nodeId];
+  const currentValue = isGlobal
+    ? globalStyle
+    : (nodeStyleMap[nodeId] !== undefined ? nodeStyleMap[nodeId] : globalStyle);
 
   const getTabType = useCallback((tabKey) => {
     const map = { all: null, real: 1, "2d": 2, "3d": 3, custom: 4 };

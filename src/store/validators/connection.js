@@ -34,7 +34,8 @@ export const isDuplicateConnection = (source, target, edges) => {
 
 /**
  * 素材节点连通规则校验
- * video 不能连 image，其余 image/image、image/video、video/video 均可
+ * 视频类素材（video 节点 / 上传的视频）不能连到 image 节点
+ * 其余 image→image、image→video、video→video、任意 image→任意 target 均可
  * @param {object} sourceNode 源节点
  * @param {object} targetNode 目标节点
  * @returns {boolean} 是否允许连通
@@ -46,6 +47,13 @@ const checkMaterialNodeConnectRule = (sourceNode, targetNode) => {
   // 仅限制：视频节点连图片节点
   if (sourceType === "video" && targetType === "image") {
     return false;
+  }
+  // 上传节点：若实际是视频素材，禁止连到图片节点
+  if (sourceType === "upload") {
+    const mediaType = sourceNode.data?.media_type;
+    if (mediaType === "video" && targetType === "image") {
+      return false;
+    }
   }
   return true;
 };

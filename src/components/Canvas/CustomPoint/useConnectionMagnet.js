@@ -7,8 +7,8 @@
  * - onConnectEnd：若光标落在有效目标的热区/卡片内则建立连线
  * - markNativeConnect：ReactFlow 原生「精确落在手柄」的连线已处理时打标，避免重复建边
  */
-import { useCallback, useEffect, useRef } from "react";
 import { useReactFlow } from "@xyflow/react";
+import { useCallback, useEffect, useRef } from "react";
 
 import useCanvasStore, { validateConnection } from "@/store/canvasStore";
 import { findBestConnectionTarget } from "./magnet";
@@ -98,13 +98,7 @@ export const useConnectionMagnet = () => {
         handlePosition: result.handlePosition,
       });
     },
-    [
-      screenToFlowPosition,
-      flowToScreenPosition,
-      getNodes,
-      getZoom,
-      canConnect,
-    ],
+    [screenToFlowPosition, flowToScreenPosition, getNodes, getZoom, canConnect],
   );
 
   const teardown = useCallback(() => {
@@ -140,15 +134,13 @@ export const useConnectionMagnet = () => {
       const latestNodes = store.nodes;
       const sourceNode = latestNodes.find((n) => n.id === source);
       const isMediaNode =
-        sourceNode &&
-        ["video", "image", "upload"].includes(sourceNode.type);
+        sourceNode && ["video", "image", "upload"].includes(sourceNode.type);
 
       if (isMediaNode && sourceNode?.data) {
         const mediaAsset = {
           id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: sourceNode.type,
-          url: sourceNode.data.url || "",
-          thumbnail: sourceNode.data.thumbnail || sourceNode.data.url || "",
+          url: sourceNode.data.fullurl || "",
           name: sourceNode.data.name || "",
           sourceNodeId: source,
         };
@@ -160,7 +152,7 @@ export const useConnectionMagnet = () => {
 
           // 检查是否已存在相同 URL 的素材（防止重复添加）
           const isDuplicate = currentRefAssetList.some(
-            (asset) => asset.url === mediaAsset.url
+            (asset) => asset.url === mediaAsset.url,
           );
 
           if (!isDuplicate) {

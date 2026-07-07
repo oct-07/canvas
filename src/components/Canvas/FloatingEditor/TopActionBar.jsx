@@ -10,8 +10,7 @@ const MODEL_FRAME_MAP = {
 };
 
 // 素材预览子组件
-// upstreamMedia 格式: { type: 'video'|'image'|'upload', url, thumbnail, name, sourceNodeId }
-// upstreamMediaList 格式: [{ type, url, thumbnail, name, sourceNodeId }]
+
 const RefImagePreviewBar = ({
   upstreamMedia,
   upstreamMediaList,
@@ -19,14 +18,19 @@ const RefImagePreviewBar = ({
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
   const [hoveredItem, setHoveredItem] = useState(null);
-  const [previewPos, setPreviewPos] = useState({ x: 0, y: 0, width: 176, height: 106 });
+  const [previewPos, setPreviewPos] = useState({
+    x: 0,
+    y: 0,
+    width: 176,
+    height: 106,
+  });
 
   // 优先使用传入的上游媒体列表，否则使用单个上游媒体构建列表
   let refImageList = [];
 
   if (upstreamMediaList && upstreamMediaList.length > 0) {
     refImageList = upstreamMediaList.map((media, idx) => ({
-      url: media.thumbnail || media.url,
+      url: media.url,
       fullUrl: media.url,
       type: media.type,
       count: idx + 1,
@@ -36,7 +40,7 @@ const RefImagePreviewBar = ({
   } else if (upstreamMedia) {
     refImageList = [
       {
-        url: upstreamMedia.thumbnail || upstreamMedia.url,
+        url: upstreamMedia.url,
         fullUrl: upstreamMedia.url,
         type: upstreamMedia.type,
         count: 1,
@@ -84,13 +88,16 @@ const RefImagePreviewBar = ({
     setHoveredItem(null);
   };
 
-  // 根据 URL 后缀判断是否为视频
-  const isVideoUrl = (url) => {
-    if (!url) return false;
-    return /\.(mp4|webm|ogg|mov|avi)$/i.test(url);
+  // 根据素材类型/URL 判断是否为视频
+  // 优先用 type 字段（来自连线时的 sourceNode.type），兜底用 URL 后缀
+  const isVideoMedia = (item) => {
+    if (!item) return false;
+    if (item.type === "video") return true;
+    if (!item.url) return false;
+    return /\.(mp4|webm|ogg|mov|avi)$/i.test(item.url);
   };
 
-  const isVideo = isVideoUrl(hoveredItem?.url);
+  const isVideo = isVideoMedia(hoveredItem);
 
   // 预览框宽高常量
   const PREVIEW_WIDTH = 176;
@@ -136,7 +143,12 @@ const RefImagePreviewBar = ({
             {isVideo ? (
               <video
                 src={hoveredItem.url}
-                style={{ width: 160, height: 90, objectFit: "cover", borderRadius: 4 }}
+                style={{
+                  width: 160,
+                  height: 90,
+                  objectFit: "cover",
+                  borderRadius: 4,
+                }}
                 autoPlay
                 muted
                 loop
@@ -145,7 +157,12 @@ const RefImagePreviewBar = ({
               <img
                 src={hoveredItem.url}
                 alt=""
-                style={{ width: 160, height: 90, objectFit: "cover", borderRadius: 4 }}
+                style={{
+                  width: 160,
+                  height: 90,
+                  objectFit: "cover",
+                  borderRadius: 4,
+                }}
               />
             )}
           </div>
@@ -173,17 +190,50 @@ const RefImagePreviewBar = ({
               width: 72,
               height: 72,
               borderRadius: 6,
-              overflow: "visible",
+              overflow: "hidden",
               flexShrink: 0,
               cursor: "pointer",
-              border: hoveredIndex === idx ? "2px solid #1890ff" : "2px solid transparent",
+              border:
+                hoveredIndex === idx
+                  ? "2px solid #1890ff"
+                  : "2px solid transparent",
             }}
           >
-            <img
-              src={imgItem.url}
-              alt={imgItem.name || "参考素材"}
-              style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: 6 }}
-            />
+            {isVideoMedia(imgItem) ? (
+              // 视频素材：用 video 标签取首帧作为封面，加 ▶ 角标
+              <video
+                src={imgItem.url}
+                preload="metadata"
+                muted
+                playsInline
+                // 强制加载到首帧，避免黑屏
+                onLoadedMetadata={(e) => {
+                  try {
+                    e.currentTarget.currentTime = 0.1;
+                  } catch (_) {
+                    /* 某些浏览器不允许 seek，忽略 */
+                  }
+                }}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  borderRadius: 6,
+                  background: "#1f1f1f",
+                }}
+              />
+            ) : (
+              <img
+                src={imgItem.url}
+                alt={imgItem.name || "参考素材"}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  borderRadius: 6,
+                }}
+              />
+            )}
             <div
               style={{
                 position: "absolute",

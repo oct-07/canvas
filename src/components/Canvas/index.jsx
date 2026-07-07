@@ -112,7 +112,11 @@ const CanvasContent = () => {
     // 立即检查并加载本地数据（无需等待网络）
     const localData = canvasStore.loadFromLocal();
     if (localData) {
-      console.log("[Canvas] 从本地加载画布数据:", localData.nodes?.length, "个节点");
+      console.log(
+        "[Canvas] 从本地加载画布数据:",
+        localData.nodes?.length,
+        "个节点",
+      );
     }
 
     // 然后从网络获取最新元信息
@@ -145,7 +149,9 @@ const CanvasContent = () => {
     // 延迟启用，确保所有初始化数据加载完成
     setTimeout(() => {
       const canvasStore = useCanvasStore.getState();
-      const canvasId = new URLSearchParams(window.location.search).get("canvas_id");
+      const canvasId = new URLSearchParams(window.location.search).get(
+        "canvas_id",
+      );
       if (canvasId) {
         canvasStore.enableAutoSave?.();
         console.log("[Canvas] 自动保存已启用");
@@ -163,16 +169,14 @@ const CanvasContent = () => {
       const latestNodes = useCanvasStore.getState().nodes;
       const sourceNode = latestNodes.find((n) => n.id === source);
       const isMediaNode =
-        sourceNode &&
-        ["video", "image", "upload"].includes(sourceNode.type);
+        sourceNode && ["video", "image", "upload"].includes(sourceNode.type);
 
       // 如果源节点是媒体节点，将素材存入目标节点的 refAssetList
       if (isMediaNode && sourceNode?.data) {
         const mediaAsset = {
           id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: sourceNode.type,
-          url: sourceNode.data.url || "",
-          thumbnail: sourceNode.data.thumbnail || sourceNode.data.url || "",
+          url: sourceNode.data.fullurl || "",
           name: sourceNode.data.name || "",
           sourceNodeId: source,
         };
@@ -187,7 +191,7 @@ const CanvasContent = () => {
 
           // 检查是否已存在相同 URL 的素材（防止重复添加）
           const isDuplicate = currentRefAssetList.some(
-            (asset) => asset.url === mediaAsset.url
+            (asset) => asset.url === mediaAsset.url,
           );
 
           if (!isDuplicate) {
@@ -304,37 +308,35 @@ const CanvasContent = () => {
     [saveHistory, setDraggingNodeId],
   );
 
-  const handleNodeClick = useCallback(
-    (_event, node) => {
-      const store = useCanvasStore.getState();
+  const handleNodeClick = useCallback((_event, node) => {
+    const store = useCanvasStore.getState();
 
-      // 已打开：再次点击同一个节点 → 关闭
-      if (store.activeNodeId === node.id && store.nodeEditors[node.id]?.visible) {
-        store.hideActiveEditor(node.id);
-        return;
-      }
+    // 已打开：再次点击同一个节点 → 关闭
+    if (store.activeNodeId === node.id && store.nodeEditors[node.id]?.visible) {
+      store.hideActiveEditor(node.id);
+      return;
+    }
 
-      // 切换 / 新打开：写入或覆盖 nodeEditors[node.id]
-      const viewport = store.viewport;
-      const pos = getNodeScreenPos(node, viewport);
-      const nodeData = store.nodes.find((item) => item.id === node.id)?.data || {};
+    // 切换 / 新打开：写入或覆盖 nodeEditors[node.id]
+    const viewport = store.viewport;
+    const pos = getNodeScreenPos(node, viewport);
+    const nodeData =
+      store.nodes.find((item) => item.id === node.id)?.data || {};
 
-      useCanvasStore.setState((state) => ({
-        activeNodeId: node.id,
-        nodeEditors: {
-          ...state.nodeEditors,
-          [node.id]: {
-            visible: true,
-            nodeType: node.type,
-            position: pos,
-            data: nodeData,
-          },
+    useCanvasStore.setState((state) => ({
+      activeNodeId: node.id,
+      nodeEditors: {
+        ...state.nodeEditors,
+        [node.id]: {
+          visible: true,
+          nodeType: node.type,
+          position: pos,
+          data: nodeData,
         },
-        panelPos: pos,
-      }));
-    },
-    [],
-  );
+      },
+      panelPos: pos,
+    }));
+  }, []);
 
   const handleNodesChange = useCallback(
     (changes) => {
@@ -494,7 +496,6 @@ const CanvasContent = () => {
           position,
           data: {
             url: item.url,
-            thumbnail: item.thumbnail,
             name: item.name,
           },
         };
@@ -587,7 +588,11 @@ const CanvasContent = () => {
 
       <MagnetHandle />
 
-      <ContextMenu onAddImage={handleAddImage} onAddVideo={handleAddVideo} onAddUpload={handleAddUpload} />
+      <ContextMenu
+        onAddImage={handleAddImage}
+        onAddVideo={handleAddVideo}
+        onAddUpload={handleAddUpload}
+      />
     </div>
   );
 };

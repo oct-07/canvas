@@ -85,7 +85,10 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
   const isVideo = nodeData.media_type === "video";
   const hasContent = !!nodeData.fullurl;
 
-  const processPendingUpload = useMemo(() => nodeData.pendingFile, [nodeData.pendingFile]);
+  const processPendingUpload = useMemo(
+    () => nodeData.pendingFile,
+    [nodeData.pendingFile],
+  );
 
   useEffect(() => {
     if (!processPendingUpload || uploading || hasContent) return;
@@ -131,8 +134,8 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
           setUploadProgress(percent);
         });
 
-        const url = result.url || result.fullurl;
-        const fullurl = result.fullurl || url;
+        const fullurl = result.fullurl || "";
+        const url = fullurl;
 
         const payload = {
           url,
@@ -255,8 +258,8 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
         setUploadProgress(percent);
       });
 
-      const url = result.url || result.fullurl;
-      const fullurl = result.fullurl || url;
+      const fullurl = result.fullurl || "";
+      const url = fullurl;
 
       // 存入真实原生宽高
       const payload = {

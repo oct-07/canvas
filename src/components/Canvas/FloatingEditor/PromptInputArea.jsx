@@ -10,6 +10,24 @@ const generateAssetId = () => {
 };
 
 /**
+ * 判断素材是否为视频
+ * 优先用 type 字段（上游传过来时统一为 'video'），兜底用 URL 后缀
+ */
+const isVideoItem = (item) => {
+  if (!item) return false;
+  if (item.type === "video") return true;
+  const url = item.url;
+  if (!url) return false;
+  return /\.(mp4|webm|ogg|mov|avi)$/i.test(url);
+};
+
+/**
+ * 根据素材类型返回 @ 引用前缀
+ * 视频素材显示 @视频N，图片素材显示 @图N
+ */
+const getAssetRefPrefix = (item) => (isVideoItem(item) ? "@视频" : "@图");
+
+/**
  * 从HTML中解析出所有素材引用的assetId列表
  * @param {string} html - 编辑器的innerHTML
  * @returns {string[]} assetId数组
@@ -23,8 +41,7 @@ export const parseAssetIdsFromHtml = (html) => {
 };
 
 // 默认素材列表（仅用于静态展示，实际数据从父组件传入）
-const defaultAssetList = [
-];
+const defaultAssetList = [];
 
 const PromptInputArea = ({
   html = "",
@@ -51,10 +68,41 @@ const PromptInputArea = ({
   const replaceTargetRef = useRef(null);
   const mentionVisibleRef = useRef(false); // 用 ref 追踪弹窗可见性，避免闭包问题
   const isInsertingRef = useRef(false); // 防止插入过程中被重置
-  const assetSeqRef = useRef(1);
+  // 按类型分组计数：视频 / 图片各自从 1 开始
+  const videoSeqRef = useRef(1);
+  const imageSeqRef = useRef(1);
   const assetIdToSeqRef = useRef(new Map());
   // 素材列表的本地状态（用于管理完整列表）
   const [localAssetList, setLocalAssetList] = useState(assetList);
+
+  // 给一个新素材分配组内序号（按类型独立从 1 开始），并写入 id→seq 映射
+  const allocateSeq = useCallback((item) => {
+    const seqRef = isVideoItem(item) ? videoSeqRef : imageSeqRef;
+    const seq = seqRef.current;
+    seqRef.current += 1;
+    if (item?.id) assetIdToSeqRef.current.set(item.id, seq);
+    return seq;
+  }, []);
+
+  // 按当前列表重建 id→seq 映射，每个类型内部从 1 紧凑重排；
+  // 同时把两个类型的计数器重置为「该类型当前总数 + 1」，便于后续新增继续递增。
+  const rebuildSeqMap = useCallback((list) => {
+    const newSeqMap = new Map();
+    let videoCount = 0;
+    let imageCount = 0;
+    (list || []).forEach((asset) => {
+      if (isVideoItem(asset)) {
+        videoCount += 1;
+        if (asset.id) newSeqMap.set(asset.id, videoCount);
+      } else {
+        imageCount += 1;
+        if (asset.id) newSeqMap.set(asset.id, imageCount);
+      }
+    });
+    assetIdToSeqRef.current = newSeqMap;
+    videoSeqRef.current = videoCount + 1;
+    imageSeqRef.current = imageCount + 1;
+  }, []);
 
   // 追踪用户本地添加的素材 ID（防止被 store 数据覆盖）
   const addedAssetIdsRef = useRef(new Set());
@@ -84,15 +132,8 @@ const PromptInputArea = ({
     });
     setLocalAssetList(mergedList);
 
-    // 重建序号映射，保证删除后再新增时序号从 1 紧凑重排
-    const newSeqMap = new Map();
-    let nextSeq = 1;
-    mergedList.forEach((asset) => {
-      newSeqMap.set(asset.id, nextSeq);
-      nextSeq += 1;
-    });
-    assetIdToSeqRef.current = newSeqMap;
-    assetSeqRef.current = nextSeq;
+    // 重建序号映射：按类型分组（视频 / 图片各自从 1 紧凑重排）
+    rebuildSeqMap(mergedList);
 
     // 兜底清理：如果 prompt DOM 里还有 assetList 中不存在的素材引用，直接删除
     const editor = promptEditorRef.current || editorRef.current;
@@ -113,7 +154,7 @@ const PromptInputArea = ({
       lastSyncedHtmlRef.current = cleanedHtml;
       onChangeHtml(cleanedHtml);
     }
-  }, [assetList]);
+  }, [assetList, rebuildSeqMap]);
 
   // 获取当前完整的素材列表（用于同步）
   const getCurrentAssetList = useCallback(() => {
@@ -205,61 +246,84 @@ const PromptInputArea = ({
   }, []);
 
   // ==================== 创建原子块DOM（外层不可编辑隔离壳，固定单行高度不撑高滚动容器） ====================
-  const createAssetTag = useCallback((item) => {
-    const outerShell = document.createElement("span");
-    outerShell.contentEditable = "false";
-    outerShell.style.display = "inline";
-    outerShell.style.lineHeight = "1.6";
-    outerShell.style.maxHeight = "26px";
-    outerShell.style.overflow = "hidden";
+  const createAssetTag = useCallback(
+    (item) => {
+      const outerShell = document.createElement("span");
+      outerShell.contentEditable = "false";
+      outerShell.style.display = "inline";
+      outerShell.style.lineHeight = "1.6";
+      outerShell.style.maxHeight = "26px";
+      outerShell.style.overflow = "hidden";
 
-    const tagEl = document.createElement("span");
-    tagEl.className = styles.assetTag;
-    const assetId = item.id || generateAssetId();
-    tagEl.dataset.assetId = assetId;
-    tagEl.style.maxHeight = "26px";
-    tagEl.style.overflow = "hidden";
+      const tagEl = document.createElement("span");
+      tagEl.className = styles.assetTag;
+      const assetId = item.id || generateAssetId();
+      tagEl.dataset.assetId = assetId;
+      tagEl.style.maxHeight = "26px";
+      tagEl.style.overflow = "hidden";
 
-    // 点击替换弹窗逻辑不变
-    tagEl.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      replaceTargetRef.current = tagEl;
-      const rect = tagEl.getBoundingClientRect();
-      const wrapRect = wrapRef.current.getBoundingClientRect();
-      setPopoverStyle({
-        left: rect.left - wrapRect.left,
-        top: rect.bottom - wrapRect.top + 6,
+      // 点击替换弹窗逻辑不变
+      tagEl.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        replaceTargetRef.current = tagEl;
+        const rect = tagEl.getBoundingClientRect();
+        const wrapRect = wrapRef.current.getBoundingClientRect();
+        setPopoverStyle({
+          left: rect.left - wrapRect.left,
+          top: rect.bottom - wrapRect.top + 6,
+        });
+        setMentionVisible(true);
+        mentionVisibleRef.current = true;
       });
-      setMentionVisible(true);
-      mentionVisibleRef.current = true;
-    });
 
-    const imgWrap = document.createElement("div");
-    imgWrap.className = styles.tagImgWrap;
-    const img = document.createElement("img");
-    img.className = styles.tagImg;
-    img.src = item.image;
-    img.loading = "lazy";
-    img.onerror = () => (imgWrap.innerHTML = "<span>🖼</span>");
-    imgWrap.appendChild(img);
+      const imgWrap = document.createElement("div");
+      imgWrap.className = styles.tagImgWrap;
 
-    // ========== 重点改造：不再渲染原始文件名，使用 @图X 格式 ==========
-    const labelText = document.createElement("span");
-    labelText.className = styles.tagLabel;
-    // 优先读取已有序号，没有则分配新序号
-    let seq = assetIdToSeqRef.current.get(assetId);
-    if (seq === undefined) {
-      seq = assetSeqRef.current;
-      assetIdToSeqRef.current.set(assetId, seq);
-      assetSeqRef.current += 1;
-    }
-    labelText.textContent = `@图${seq}`;
+      // 视频素材用 video 取首帧作为缩略图；图片素材继续用 img
+      if (isVideoItem(item)) {
+        const video = document.createElement("video");
+        video.src = item.url;
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = "metadata";
+        video.className = styles.tagImg;
+        video.addEventListener("loadedmetadata", () => {
+          try {
+            video.currentTime = 0.1;
+          } catch (_) {
+            /* 某些浏览器不允许 seek，忽略 */
+          }
+        });
+        video.addEventListener("error", () => {
+          imgWrap.innerHTML = "<span>🎬</span>";
+        });
+        imgWrap.appendChild(video);
+      } else {
+        const img = document.createElement("img");
+        img.className = styles.tagImg;
+        img.src = item.image;
+        img.loading = "lazy";
+        img.onerror = () => (imgWrap.innerHTML = "<span>🖼</span>");
+        imgWrap.appendChild(img);
+      }
 
-    tagEl.append(imgWrap, labelText);
-    outerShell.appendChild(tagEl);
-    return outerShell;
-  }, []);
+      // ========== 重点改造：不再渲染原始文件名，使用 @图X 格式 ==========
+      const labelText = document.createElement("span");
+      labelText.className = styles.tagLabel;
+      // 优先读取已有序号，没有则按类型分配新序号（视频 / 图片各自从 1 开始）
+      let seq = assetIdToSeqRef.current.get(assetId);
+      if (seq === undefined) {
+        seq = allocateSeq(item);
+      }
+      labelText.textContent = `${getAssetRefPrefix(item)}${seq}`;
+
+      tagEl.append(imgWrap, labelText);
+      outerShell.appendChild(tagEl);
+      return outerShell;
+    },
+    [allocateSeq],
+  );
 
   // ==================== 插入@素材 ====================
   const insertAssetTag = useCallback(
@@ -541,19 +605,12 @@ const PromptInputArea = ({
         // 1. 删除序号映射
         assetIdToSeqRef.current.delete(deletedAssetId);
 
-        // 2. 重建剩余素材的序号映射，避免删除后新增序号继续追加
+        // 2. 重建剩余素材的序号映射（按类型分组，每组各自从 1 紧凑重排）
         const currentAssetList = getCurrentAssetList();
         const remainingAssets = currentAssetList.filter(
           (a) => a.id !== deletedAssetId,
         );
-        const newSeqMap = new Map();
-        let nextSeq = 1;
-        remainingAssets.forEach((asset) => {
-          newSeqMap.set(asset.id, nextSeq);
-          nextSeq += 1;
-        });
-        assetIdToSeqRef.current = newSeqMap;
-        assetSeqRef.current = nextSeq;
+        rebuildSeqMap(remainingAssets);
 
         // 3. 过滤本地素材列表
         const updatedAssetList = remainingAssets;
@@ -564,14 +621,20 @@ const PromptInputArea = ({
 
         // 4. 刷新编辑器内所有原子块的序号文字
         if (editorRef.current) {
-          editorRef.current.querySelectorAll("[data-asset-id]").forEach((tag) => {
-            const aid = tag.dataset.assetId;
-            const newSeq = assetIdToSeqRef.current.get(aid);
-            if (newSeq !== undefined) {
-              const labelSpan = tag.querySelector(`.${styles.tagLabel}`);
-              if (labelSpan) labelSpan.textContent = `@图${newSeq}`;
-            }
-          });
+          // 用最新的 assetList 构建 id → item 的映射，用于根据素材类型决定前缀
+          const idToItem = new Map(remainingAssets.map((a) => [a.id, a]));
+          editorRef.current
+            .querySelectorAll("[data-asset-id]")
+            .forEach((tag) => {
+              const aid = tag.dataset.assetId;
+              const newSeq = assetIdToSeqRef.current.get(aid);
+              if (newSeq !== undefined) {
+                const labelSpan = tag.querySelector(`.${styles.tagLabel}`);
+                if (labelSpan) {
+                  labelSpan.textContent = `${getAssetRefPrefix(idToItem.get(aid))}${newSeq}`;
+                }
+              }
+            });
         }
       }
 
@@ -595,6 +658,7 @@ const PromptInputArea = ({
       handleMoveUp,
       handleMoveDown,
       handleConfirm,
+      rebuildSeqMap,
     ],
   );
 
@@ -723,11 +787,28 @@ const PromptInputArea = ({
               onMouseEnter={() => setSelectedIndex(idx)}
             >
               <div className={styles.itemLeft}>
-                <img src={item.image} alt="" className={styles.itemThumb} />
+                {isVideoItem(item) ? (
+                  <video
+                    src={item.url}
+                    className={styles.itemThumb}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    onLoadedMetadata={(e) => {
+                      try {
+                        e.currentTarget.currentTime = 0.1;
+                      } catch (_) {
+                        /* 忽略 */
+                      }
+                    }}
+                  />
+                ) : (
+                  <img src={item.image} alt="" className={styles.itemThumb} />
+                )}
                 <span className={styles.itemLabel}>{item.label}</span>
               </div>
               <span className={styles.itemIdTag}>
-                @图{assetIdToSeqRef.current.get(item.id) ?? "?"}
+                {`${getAssetRefPrefix(item)}${assetIdToSeqRef.current.get(item.id) ?? "?"}`}
               </span>
             </div>
           ))}

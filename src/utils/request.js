@@ -6,7 +6,7 @@ let isTokenInvalid = false;
 
 const createAxiosInstance = (options = {}) => {
   const instance = axios.create({
-    baseURL: "https://ai.hnqzhj.com",
+    baseURL: import.meta.env.VITE_API_BASE_URL || "https://ai.hnqzhj.com",
     timeout: options.timeout || 30000,
     headers: {
       "Content-Type": "application/json",

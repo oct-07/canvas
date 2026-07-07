@@ -13,7 +13,7 @@ export default defineConfig({
     host: true,
     proxy: {
       "/api": {
-        target: "https://ai.hnqzhj.com",
+        target: process.env.VITE_API_BASE_URL || "https://ai.hnqzhj.com",
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ""),
       },

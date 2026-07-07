@@ -7,6 +7,7 @@ import { Position, useUpdateNodeInternals } from "@xyflow/react";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
+import { Input } from "antd";
 
 // 最大和最小宽度限制
 const MAX_NODE_WIDTH = 400; // 最大节点宽度
@@ -14,7 +15,7 @@ const MIN_NODE_WIDTH = 200; // 最小节点宽度
 const DEFAULT_NODE_WIDTH = 260; // 默认节点宽度
 const DEFAULT_ASPECT_RATIO = "227";
 
-const REPLACE_ICON_SVG = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' xmlns:xlink='http://www.w3.org/1999/xlink' aria-hidden='true' role='img' class='iconify iconify--libtv pointer-events-none' width='14' height='14' viewBox='0 0 19.8008 19.8006'%3E%3Cpath d='M1.80078 16.9003C1.80087 17.1919 1.91684 17.4714 2.12305 17.6776C2.32932 17.8838 2.60874 17.9999 2.90039 17.9999H16.9004C17.192 17.9999 17.4715 17.8838 17.6777 17.6776C17.8839 17.4714 17.9999 17.1919 18 16.9003V11.9999H19.8008V16.9003C19.8007 17.6693 19.4949 18.4073 18.9512 18.951C18.4073 19.4948 17.6694 19.8006 16.9004 19.8006H2.90039C2.13135 19.8006 1.39345 19.4948 0.849609 18.951C0.305837 18.4073 9.33702e-05 17.6693 0 16.9003V11.9999H1.80078V16.9003ZM9.33203 0.202009C9.68553 -0.086443 10.2076 -0.0660213 10.5371 0.263533L16.1729 5.90025L14.9004 7.17271L10.8008 3.07408V13.8006H9V3.07408L4.90039 7.17271L3.62793 5.90025L9.26367 0.263533L9.33203 0.202009Z' fill='currentColor'%3E%3C/path%3E%3C/svg%3E`;
+
 
 /**
  * 计算最佳显示尺寸
@@ -74,15 +75,33 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
   const draggingNodeId = useCanvasStore((state) => state.draggingNodeId);
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
 
+  const nodeData = data ?? {};
+
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   // 用 ref 而非 state 作为 useEffect guard，避免 React batching 导致重复触发
   const isUploadingRef = useRef(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(nodeData.name || "");
+  const nameInputRef = useRef(null);
 
   const isThisNodeDragging = draggingNodeId === id;
+
+  // 当 nodeData.name 从外部变化时同步本地编辑状态
+  useEffect(() => {
+    if (!isEditingName) {
+      setNameValue(nodeData.name || "");
+    }
+  }, [nodeData.name, isEditingName]);
+
+  // 编辑态自动聚焦
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+  }, [isEditingName]);
   const isActive = selected || isThisNodeDragging;
 
-  const nodeData = data ?? {};
   const aspectRatio = nodeData.aspect_ratio ?? DEFAULT_ASPECT_RATIO;
   const isVideo = nodeData.media_type === "video";
   const hasContent = !!nodeData.fullurl;
@@ -309,6 +328,35 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
     }
   };
 
+  const handleNameClick = (e) => {
+    e.stopPropagation();
+    setIsEditingName(true);
+  };
+
+  const handleNameChange = (e) => {
+    setNameValue(e.target.value);
+  };
+
+  const handleNameBlur = () => {
+    const trimmed = nameValue.trim();
+    if (trimmed && trimmed !== nodeData.name) {
+      updateNodeData(id, { name: trimmed });
+    } else {
+      setNameValue(nodeData.name || "");
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+    if (e.key === "Escape") {
+      setNameValue(nodeData.name || "");
+      setIsEditingName(false);
+    }
+  };
+
   const renderContent = () => {
     if (hasContent) {
       if (isVideo) {
@@ -427,9 +475,32 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
         {renderContent()}
       </div>
 
-      {/* 节点名称标签，浮动在盒子上方 */}
-      {nodeData.name && (
+      {/* 节点名称标签，浮动在盒子上方，支持点击编辑 */}
+      {isEditingName ? (
+        <Input
+          ref={nameInputRef}
+          value={nameValue}
+          onChange={handleNameChange}
+          onBlur={handleNameBlur}
+          onKeyDown={handleNameKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          size="small"
+          style={{
+            position: "absolute",
+            top: -28,
+            left: 0,
+            right: 0,
+            background: "rgba(38, 38, 38, 0.9)",
+            borderColor: "#177ddc",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 500,
+            textAlign: "center",
+          }}
+        />
+      ) : (
         <div
+          onClick={handleNameClick}
           style={{
             position: "absolute",
             top: -28,
@@ -446,9 +517,11 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
             textAlign: "center",
+            cursor: "text",
           }}
+          title="点击修改名称"
         >
-          {nodeData.name}
+          {nameValue}
         </div>
       )}
 

@@ -3,10 +3,11 @@ import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { getThumbUrl } from "@/utils/thumbnail";
 import { PictureOutlined } from "@ant-design/icons";
 import { Position, useUpdateNodeInternals } from "@xyflow/react";
-import { memo, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import FloatingEditor from "../FloatingEditor";
+import { Input } from "antd";
 
 const IMAGE_NODE_WIDTH = 260;
 const DEFAULT_ASPECT_RATIO = "227";
@@ -29,6 +30,54 @@ const ImageNode = memo(({ id, data, selected }) => {
 
   const nodeData = editor?.data ?? data ?? {};
   const aspectRatio = nodeData.aspect_ratio || DEFAULT_ASPECT_RATIO;
+
+  const updateNodeData = useCanvasStore((state) => state.updateNodeData);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(nodeData.name || "");
+  const nameInputRef = useRef(null);
+
+  // 当 nodeData.name 从外部变化时同步本地编辑状态
+  useEffect(() => {
+    if (!isEditingName) {
+      setNameValue(nodeData.name || "");
+    }
+  }, [nodeData.name, isEditingName]);
+
+  // 编辑态自动聚焦
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+    }
+  }, [isEditingName]);
+
+  const handleNameClick = (e) => {
+    e.stopPropagation();
+    setIsEditingName(true);
+  };
+
+  const handleNameChange = (e) => {
+    setNameValue(e.target.value);
+  };
+
+  const handleNameBlur = () => {
+    const trimmed = nameValue.trim();
+    if (trimmed && trimmed !== nodeData.name) {
+      updateNodeData(id, { name: trimmed });
+    } else {
+      setNameValue(nodeData.name || "");
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e) => {
+    if (e.key === "Enter") {
+      e.currentTarget.blur();
+    }
+    if (e.key === "Escape") {
+      setNameValue(nodeData.name || "");
+      setIsEditingName(false);
+    }
+  };
 
   const previewStyle = useMemo(() => {
     const size = getAspectRatioSize(aspectRatio);
@@ -105,9 +154,32 @@ const ImageNode = memo(({ id, data, selected }) => {
         )}
       </div>
 
-      {/* 节点名称标签，浮动在盒子上方 */}
-      {nodeData.name && (
+      {/* 节点名称标签，浮动在盒子上方，支持点击编辑 */}
+      {isEditingName ? (
+        <Input
+          ref={nameInputRef}
+          value={nameValue}
+          onChange={handleNameChange}
+          onBlur={handleNameBlur}
+          onKeyDown={handleNameKeyDown}
+          onClick={(e) => e.stopPropagation()}
+          size="small"
+          style={{
+            position: "absolute",
+            top: -28,
+            left: 0,
+            right: 0,
+            background: "rgba(38, 38, 38, 0.9)",
+            borderColor: "#177ddc",
+            color: "#fff",
+            fontSize: 12,
+            fontWeight: 500,
+            textAlign: "center",
+          }}
+        />
+      ) : (
         <div
+          onClick={handleNameClick}
           style={{
             position: "absolute",
             top: -28,
@@ -124,9 +196,11 @@ const ImageNode = memo(({ id, data, selected }) => {
             textOverflow: "ellipsis",
             whiteSpace: "nowrap",
             textAlign: "center",
+            cursor: "text",
           }}
+          title="点击修改名称"
         >
-          {nodeData.name}
+          {nameValue}
         </div>
       )}
 

@@ -18,3 +18,8 @@ export default {
   getCanvasDetail,
   saveCanvas,
 };
+
+//图片视频下载
+export const dowloadMedia = (params) => {
+  return get("/index/index/imageDownload", params);
+};

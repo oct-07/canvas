@@ -1,7 +1,7 @@
 import useCanvasStore from "@/store/canvasStore";
 import { CloseOutlined } from "@ant-design/icons";
 import { Button, Popover } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const MODEL_FRAME_MAP = {
   1: { label: "首尾帧" },
@@ -223,10 +223,10 @@ const TopActionBar = ({
   upstreamMedia,
   upstreamMediaList,
   onRemoveMedia,
+  activeFrameKey: parentFrameKey,
+  onChangeFrame,
   hasVideo = false,
 }) => {
-  const [activeFrameKey, setActiveFrameKey] = useState("");
-
   // 计算素材数量
   const imgTotal = upstreamMediaList?.length || (upstreamMedia ? 1 : 0);
 
@@ -246,6 +246,19 @@ const TopActionBar = ({
 
   const rawFrameStr = currentSelectModel?.model_frame || "";
   const frameArr = rawFrameStr.split(",").filter((item) => item.trim());
+
+  // 组件挂载时若父组件还没有选中值，则初始化为 "4"（全能参考）并同步给父组件
+  useEffect(() => {
+    if (parentFrameKey !== undefined) return;
+    const raw = currentSelectModel?.model_frame || "";
+    const arr = raw.split(",").filter((item) => item.trim());
+    let defaultKey = "4";
+    if (!arr.includes("4") && arr.length > 0) {
+      defaultKey = arr[0];
+    }
+    if (onChangeFrame) onChangeFrame(defaultKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSelectModel?.id]);
 
   // 判断当前按钮是否禁用
   const getBtnDisabled = (frameKey) => {
@@ -272,14 +285,17 @@ const TopActionBar = ({
         {frameArr.map((frameKey) => {
           const frameConfig = MODEL_FRAME_MAP[frameKey];
           if (!frameConfig) return null;
-          const isActive = activeFrameKey === frameKey;
+          const isActive = parentFrameKey === frameKey;
           const disabled = getBtnDisabled(frameKey);
 
           return (
             <Button
               key={frameKey}
               disabled={disabled}
-              onClick={() => setActiveFrameKey(frameKey)}
+              onClick={() => {
+                setActiveFrameKey(frameKey);
+                if (onChangeFrame) onChangeFrame(frameKey);
+              }}
               style={{
                 background: isActive ? "#383838" : "#2a2a2a",
                 border: isActive ? "1px solid #383838" : "1px solid #404040",

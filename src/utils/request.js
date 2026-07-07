@@ -38,9 +38,13 @@ const createAxiosInstance = (options = {}) => {
   instance.interceptors.response.use(
     (response) => {
       const res = response.data;
+      if (response.config.responseType === "blob") {
+        return response;
+      }
       if (typeof res.code === "object" && res.msg === "上传成功") {
         return res;
       }
+
       if (res.code !== 1) {
         message.error(res.msg || "请求失败");
         return Promise.reject(res);

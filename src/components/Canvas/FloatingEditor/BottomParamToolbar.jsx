@@ -52,6 +52,7 @@ const BottomParamToolbar = ({
   steps,
   onChangeSteps,
   onSubmit,
+  activeFrameKey,
 }) => {
   //弹框气泡
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -105,6 +106,7 @@ const BottomParamToolbar = ({
     const newData = {
       ...paramValues,
       model_id: firstModel.id,
+      model_name: firstModel.model_name,
       model_frame: firstModel.model_frame,
     };
     firstModel.prop_list?.forEach((prop) => {
@@ -116,7 +118,7 @@ const BottomParamToolbar = ({
         // 防止覆盖从编辑器回填的旧值
         if (newData[prop.prop_str] === undefined) {
           const firstVal = prop.prop_values_list[0];
-          newData[prop.prop_str] = firstVal.prop_value_id;
+          newData[prop.prop_str] = firstVal.prop_value_name;
         }
       }
     });
@@ -306,9 +308,9 @@ const BottomParamToolbar = ({
         );
         return {
           label: item.prop_value_name,
-          value: item.prop_value_id,
+          value: item.prop_value_name,
           ratio: matchedRatio?.ratio || null,
-          key: matchedRatio?.key || item.prop_value_id,
+          key: matchedRatio?.key || item.prop_value_name,
         };
       });
 
@@ -363,7 +365,7 @@ const BottomParamToolbar = ({
     if ([1, 2, 3].includes(prop_viewtype)) {
       const options = prop_values_list.map((item) => ({
         label: item.prop_value_name,
-        value: item.prop_value_id,
+        value: item.prop_value_name,
       }));
       return (
         <div style={{ marginBottom: "16px" }} key={prop_id}>
@@ -414,16 +416,20 @@ const BottomParamToolbar = ({
           </div>
           <Space>
             <Switch
-              checked={String(currentVal) === trueItem?.prop_value_id}
+              checked={String(currentVal) === trueItem?.prop_value_name}
               onChange={(checked) => {
-                const saveId = checked
-                  ? trueItem.prop_value_id
-                  : falseItem.prop_value_id;
-                handleParamChange(prop.prop_str, saveId);
+                handleParamChange(
+                  prop.prop_str,
+                  checked
+                    ? trueItem.prop_value_name
+                    : falseItem.prop_value_name,
+                );
               }}
             />
             <span>
-              {String(currentVal) === trueItem?.prop_value_id ? "开启" : "关闭"}
+              {String(currentVal) === trueItem?.prop_value_name
+                ? "开启"
+                : "关闭"}
             </span>
           </Space>
         </div>
@@ -453,13 +459,14 @@ const BottomParamToolbar = ({
 
   // 下拉菜单：点击写入当前节点 data.model_id
   const modelMenuItems = (modelList || []).map((item) => ({
-    label: item.model_title,
+    label: item.model_name,
     key: item.id,
     onClick: () => {
       if (!editor || !activeNodeId) return;
       const newEditorData = {
         ...editor.data,
         model_id: item.id,
+        model_name: item.model_name,
         model_frame: item.model_frame,
       };
       updateNodeEditorData(activeNodeId, newEditorData);
@@ -471,16 +478,29 @@ const BottomParamToolbar = ({
     if (!editor || !activeNodeId) return;
     setSubmitting(true);
     try {
+      // 从 propList 推导 params 的 key 集合，直接从 editor.data 读取值
+      // 存的就是 name，无需转换；旧数据若有 id 则反向查表兼容
+      const params = {};
+      propList.forEach((prop) => {
+        const val = editor.data[prop.prop_str];
+        if (val === undefined || val === null || val === "") return;
+        const matched = prop.prop_values_list?.find(
+          (item) => item.prop_value_id === val,
+        );
+        // 命中 id→name 查表说明是旧数据；未命中说明是新格式，直接用
+        params[prop.prop_str] = matched ? matched.prop_value_name : val;
+      });
+
       const nodeData = {
         nodeType,
-        params: editor.data.params || {},
-        model_frame: editor.data.model_frame,
+        params,
+        model_frame: activeFrameKey ?? "",
         refAssetList: editor.data.refAssetList || [],
-        provider: editor.data.provider || "",
-        model_name: editor.data.model_name || "",
+        provider: currentSelectModel?.model_company ?? "",
+        model_name: currentSelectModel?.model_name ?? "",
         model_id: editor.data.model_id || "",
         prompt: editor.data.prompt || "",
-        negative_prompt: editor.data.negative_prompt || "",
+        negative_prompt: "",
         team_id: editor.data.team_id || "",
         vip_weight: editor.data.vip_weight || "",
       };

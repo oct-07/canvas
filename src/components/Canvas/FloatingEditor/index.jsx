@@ -132,6 +132,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const [preset, setPreset] = useState("");
   const [cameraMode, setCameraMode] = useState(false);
   const [imageCount, setImageCount] = useState(1);
+  const [activeFrameKey, setActiveFrameKey] = useState("4");
 
   // 防抖保存定时器
   const saveTimerRef = useRef(null);
@@ -359,6 +360,8 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
           upstreamMedia={upstreamMediaArray[0] || null}
           upstreamMediaList={upstreamMediaArray}
           onRemoveMedia={handleRemoveMedia}
+          activeFrameKey={activeFrameKey}
+          onChangeFrame={setActiveFrameKey}
         />
 
         <div
@@ -394,6 +397,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
           steps={params.steps}
           onChangeSteps={(val) => setParams({ ...params, steps: val })}
           onSubmit={handleSend}
+          activeFrameKey={activeFrameKey}
         />
       </div>
     </ConfigProvider>

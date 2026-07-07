@@ -1,5 +1,6 @@
 import useCanvasStore from "@/store/canvasStore";
-import { Button } from "antd";
+import { CloseOutlined } from "@ant-design/icons";
+import { Button, Popover } from "antd";
 import { useState } from "react";
 
 const MODEL_FRAME_MAP = {
@@ -10,20 +11,13 @@ const MODEL_FRAME_MAP = {
 };
 
 // 素材预览子组件
-
 const RefImagePreviewBar = ({
   upstreamMedia,
   upstreamMediaList,
   onRemoveMedia,
 }) => {
-  const [hoveredIndex, setHoveredIndex] = useState(null);
-  const [hoveredItem, setHoveredItem] = useState(null);
-  const [previewPos, setPreviewPos] = useState({
-    x: 0,
-    y: 0,
-    width: 176,
-    height: 106,
-  });
+  // 只保留悬浮序号切换状态
+  const [hoverIdx, setHoverIdx] = useState(null);
 
   // 优先使用传入的上游媒体列表，否则使用单个上游媒体构建列表
   let refImageList = [];
@@ -59,37 +53,7 @@ const RefImagePreviewBar = ({
     }
   };
 
-  // 鼠标进入时计算预览框位置
-  const handleMouseEnter = (imgItem, idx, e) => {
-    setHoveredIndex(idx);
-    setHoveredItem(imgItem);
-
-    // 计算预览框位置（显示在素材上方）
-    const rect = e.currentTarget.getBoundingClientRect();
-    let x = rect.left + rect.width / 2 - PREVIEW_WIDTH / 2;
-    let y = rect.top - PREVIEW_HEIGHT - 8;
-
-    // 边界检测：左侧
-    if (x < 10) x = 10;
-    // 边界检测：右侧
-    if (x + PREVIEW_WIDTH > window.innerWidth - 10) {
-      x = window.innerWidth - PREVIEW_WIDTH - 10;
-    }
-    // 边界检测：顶部（如果上方空间不够，显示在下方）
-    if (y < 10) {
-      y = rect.bottom + 8;
-    }
-
-    setPreviewPos({ x, y });
-  };
-
-  const handleMouseLeave = () => {
-    setHoveredIndex(null);
-    setHoveredItem(null);
-  };
-
   // 根据素材类型/URL 判断是否为视频
-  // 优先用 type 字段（来自连线时的 sourceNode.type），兜底用 URL 后缀
   const isVideoMedia = (item) => {
     if (!item) return false;
     if (item.type === "video") return true;
@@ -97,77 +61,8 @@ const RefImagePreviewBar = ({
     return /\.(mp4|webm|ogg|mov|avi)$/i.test(item.url);
   };
 
-  const isVideo = isVideoMedia(hoveredItem);
-
-  // 预览框宽高常量
-  const PREVIEW_WIDTH = 176;
-  const PREVIEW_HEIGHT = 106;
-
-  // 预览框样式 - 使用 fixed 定位避免被父容器裁剪
-  const previewStyle = {
-    position: "fixed",
-    left: previewPos.x,
-    top: previewPos.y,
-    width: PREVIEW_WIDTH,
-    height: PREVIEW_HEIGHT,
-    background: "#27272a",
-    border: "1px solid #444",
-    borderRadius: 8,
-    padding: 8,
-    zIndex: 99999,
-    boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
-    pointerEvents: "none",
-  };
-
   return (
     <div style={{ marginTop: 12, position: "relative" }}>
-      {/* 独立预览层 - 避免被父容器 overflow 裁剪 */}
-      {hoveredItem && (
-        <>
-          {/* 预览小三角 - 指向下方素材 */}
-          <div
-            style={{
-              position: "fixed",
-              left: previewPos.x + PREVIEW_WIDTH / 2 - 6,
-              top: previewPos.y + PREVIEW_HEIGHT - 1,
-              width: 0,
-              height: 0,
-              borderLeft: "6px solid transparent",
-              borderRight: "6px solid transparent",
-              borderTop: "6px solid #27272a",
-              zIndex: 100000,
-              pointerEvents: "none",
-            }}
-          />
-          <div style={previewStyle}>
-            {isVideo ? (
-              <video
-                src={hoveredItem.url}
-                style={{
-                  width: 160,
-                  height: 90,
-                  objectFit: "cover",
-                  borderRadius: 4,
-                }}
-                autoPlay
-                muted
-                loop
-              />
-            ) : (
-              <img
-                src={hoveredItem.url}
-                alt=""
-                style={{
-                  width: 160,
-                  height: 90,
-                  objectFit: "cover",
-                  borderRadius: 4,
-                }}
-              />
-            )}
-          </div>
-        </>
-      )}
       <div
         style={{
           display: "flex",
@@ -179,85 +74,143 @@ const RefImagePreviewBar = ({
           overflowY: "visible",
           scrollbarWidth: "none",
         }}
+        className="ref-scroll-wrap"
       >
-        {refImageList.map((imgItem, idx) => (
-          <div
-            key={idx}
-            onMouseEnter={(e) => handleMouseEnter(imgItem, idx, e)}
-            onMouseLeave={handleMouseLeave}
-            style={{
-              position: "relative",
-              width: 72,
-              height: 72,
-              borderRadius: 6,
-              overflow: "hidden",
-              flexShrink: 0,
-              cursor: "pointer",
-              border:
-                hoveredIndex === idx
-                  ? "2px solid #1890ff"
-                  : "2px solid transparent",
-            }}
-          >
-            {isVideoMedia(imgItem) ? (
-              // 视频素材：用 video 标签取首帧作为封面，加 ▶ 角标
-              <video
-                src={imgItem.url}
-                preload="metadata"
-                muted
-                playsInline
-                // 强制加载到首帧，避免黑屏
-                onLoadedMetadata={(e) => {
-                  try {
-                    e.currentTarget.currentTime = 0.1;
-                  } catch (_) {
-                    /* 某些浏览器不允许 seek，忽略 */
-                  }
-                }}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  borderRadius: 6,
-                  background: "#1f1f1f",
-                }}
-              />
-            ) : (
-              <img
-                src={imgItem.url}
-                alt={imgItem.name || "参考素材"}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  borderRadius: 6,
-                }}
-              />
-            )}
-            <div
+        {refImageList.map((imgItem, idx) => {
+          const isVideo = isVideoMedia(imgItem);
+          // Popover气泡内部预览内容
+          const previewContent = isVideo ? (
+            <video
+              src={imgItem.url}
+              muted
+              autoPlay
+              loop
               style={{
-                position: "absolute",
-                top: 2,
-                right: 2,
-                background: "rgba(0,0,0,0.75)",
-                color: "#fff",
-                fontSize: 12,
-                width: 20,
-                height: 20,
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                cursor: "pointer",
-                transition: "background 0.2s",
+                width: 160,
+                height: 90,
+                objectFit: "cover",
+                borderRadius: 4,
+                display: "block",
               }}
-              onClick={(e) => handleRemove(imgItem, e)}
+            />
+          ) : (
+            <img
+              src={imgItem.url}
+              alt="预览大图"
+              style={{
+                width: 160,
+                height: 90,
+                objectFit: "cover",
+                borderRadius: 4,
+                display: "block",
+              }}
+            />
+          );
+
+          return (
+            <Popover
+              key={idx}
+              content={previewContent}
+              placement="top"
+              trigger="hover"
+              arrow
+              // 浮层挂载body，彻底避免父容器裁切
+              getPopupContainer={() => document.body}
+              overlayStyle={{
+                background: "#27272a",
+                padding: 8,
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+              }}
             >
-              {hoveredIndex === idx ? "×" : imgItem.count}
-            </div>
-          </div>
-        ))}
+              <div
+                style={{
+                  position: "relative",
+                  width: 72,
+                  height: 72,
+                  borderRadius: 6,
+                  overflow: "hidden",
+                  flexShrink: 0,
+                  cursor: "pointer",
+                  border:
+                    hoverIdx === idx
+                      ? "2px solid #1890ff"
+                      : "2px solid transparent",
+                }}
+                onMouseEnter={() => setHoverIdx(idx)}
+                onMouseLeave={() => setHoverIdx(null)}
+              >
+                {isVideoMedia(imgItem) ? (
+                  // 视频缩略图截取首帧
+                  <video
+                    src={imgItem.url}
+                    preload="metadata"
+                    muted
+                    playsInline
+                    onLoadedMetadata={(e) => {
+                      try {
+                        e.currentTarget.currentTime = 0.1;
+                      } catch (_) {
+                        // 部分浏览器禁止seek，捕获异常
+                      }
+                    }}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      borderRadius: 6,
+                      background: "#1f1f1f",
+                    }}
+                  />
+                ) : (
+                  <img
+                    src={imgItem.url}
+                    alt={imgItem.name || "参考素材"}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      borderRadius: 6,
+                    }}
+                  />
+                )}
+
+                {/* 右上角删除角标：使用antd图标组件 */}
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 2,
+                    right: 2,
+                    background: "rgba(0,0,0,0.75)",
+                    color: "#fff",
+                    fontSize: 12,
+                    width: 20,
+                    height: 20,
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                  }}
+                  onClick={(e) => handleRemove(imgItem, e)}
+                >
+                  {hoverIdx === idx ? (
+                    <CloseOutlined size={12} />
+                  ) : (
+                    imgItem.count
+                  )}
+                </div>
+              </div>
+            </Popover>
+          );
+        })}
       </div>
+      {/* 隐藏横向滚动条（webkit浏览器兼容） */}
+      <style jsx global>{`
+        .ref-scroll-wrap::-webkit-scrollbar {
+          display: none;
+        }
+      `}</style>
     </div>
   );
 };
@@ -330,7 +283,7 @@ const TopActionBar = ({
               style={{
                 background: isActive ? "#383838" : "#2a2a2a",
                 border: isActive ? "1px solid #383838" : "1px solid #404040",
-                color: isActive ? "#fff" : "#fff",
+                color: "#fff",
                 borderRadius: 6,
               }}
             >

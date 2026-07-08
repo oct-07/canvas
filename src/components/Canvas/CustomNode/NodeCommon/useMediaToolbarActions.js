@@ -54,19 +54,19 @@ export const useMediaToolbarActions = ({ id, data, mediaType }) => {
     // 正在下载中直接拦截重复点击
     if (downloadLoading) return;
 
-    if (!data.fullurl) {
+    if (!data.url) {
       message.warning("暂无素材可下载");
       return;
     }
 
-    const urlParts = data.fullurl.split("/").pop().split(".");
+    const urlParts = data.url.split("/").pop().split(".");
     const ext = urlParts[urlParts.length - 1];
 
     const fullFileName = data.name
       ? `${data.name}.${ext}`
-      : data.fullurl.split("/").pop();
+      : data.url.split("/").pop();
 
-    const api = `${import.meta.env.VITE_API_BASE_URL}/index/index/imageDownload?url=${encodeURIComponent(data.fullurl)}&filename=${encodeURIComponent(fullFileName)}`;
+    const api = `${import.meta.env.VITE_API_BASE_URL}/index/index/imageDownload?url=${encodeURIComponent(data.url)}&filename=${encodeURIComponent(fullFileName)}`;
 
     // 开启loading + 弹出下载中提示
     setDownloadLoading(true);
@@ -105,11 +105,11 @@ export const useMediaToolbarActions = ({ id, data, mediaType }) => {
    */
   const handleFullscreen = (e) => {
     stopNodeEvent(e);
-    if (!data.fullurl) {
+    if (!data.url) {
       message.warning("暂无素材可预览");
       return;
     }
-    window.open(data.fullurl, "_blank", "noopener,noreferrer");
+    window.open(data.url, "_blank", "noopener,noreferrer");
   };
 
   return {

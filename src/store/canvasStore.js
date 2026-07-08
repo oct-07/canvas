@@ -17,6 +17,7 @@ import {
 } from "./slices/materialsSlice";
 import { createNodesSlice, nodesInitialState } from "./slices/nodesSlice";
 import { createUISlice, uiInitialState } from "./slices/uiSlice";
+import { createWsSlice, wsInitialState } from "./slices/wsSlice";
 // 导入模型接口
 import { getModelSku } from "@/api";
 // 导入本地持久化管理
@@ -31,6 +32,7 @@ const initialState = {
   ...clipboardInitialState,
   ...materialsInitialState,
   ...canvasInitialState,
+  ...wsInitialState,
 
   // ========== 模型相关状态 ==========
   modelListMap: {},         // 按 model_type 分缓存：{ '1': [...], '2': [...] }
@@ -92,6 +94,9 @@ const useCanvasStore = create((set, get) => {
         // 重置模型相关缓存
         modelListMap: {},
         modelParamLoadedMap: {},
+        // 重置 WS 任务映射，避免老任务终态误派发到新画布
+        taskMap: {},
+        nodeMap: {},
       });
     },
 
@@ -148,6 +153,12 @@ const useCanvasStore = create((set, get) => {
     ...createMaterialsSlice(getStore, setStore),
     //画布底层
     ...createCanvasSlice(getStore, setStore),
+    //WS 任务分发（依赖 nodesSlice 的 updateNodeData，写回节点 data）
+    ...createWsSlice(
+      setStore,
+      getStore,
+      (nodeId, payload) => getStore().updateNodeData(nodeId, payload),
+    ),
   };
 
   return store;

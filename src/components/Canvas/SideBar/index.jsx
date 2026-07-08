@@ -85,13 +85,13 @@ const SideBar = ({ collapsed, onToggle, selectedNodeId, onNodeSelect }) => {
   if (elementFilter === "image") {
     sourceNodes = sourceNodes.filter((node) => {
       if (node.type === "image") return true;
-      if (node.type === "upload") return !isVideoUrl(node.data?.fullurl);
+      if (node.type === "upload") return !isVideoUrl(node.data?.url);
       return false;
     });
   } else if (elementFilter === "video") {
     sourceNodes = sourceNodes.filter((node) => {
       if (node.type === "video") return true;
-      if (node.type === "upload") return isVideoUrl(node.data?.fullurl);
+      if (node.type === "upload") return isVideoUrl(node.data?.url);
       return false;
     });
   }
@@ -111,7 +111,7 @@ const SideBar = ({ collapsed, onToggle, selectedNodeId, onNodeSelect }) => {
       node.type === "upload" ||
       node.type === "video"
     ) {
-      return d.fullurl || "";
+      return d.url || "";
     }
     return "";
   }, []);

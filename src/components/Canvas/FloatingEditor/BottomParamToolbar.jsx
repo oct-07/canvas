@@ -67,9 +67,19 @@ const BottomParamToolbar = ({
     (state) => state.setNodeEditorData,
   );
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
+  const registerTask = useCanvasStore((state) => state.registerTask);
 
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
   const paramValues = editor?.data || {};
+
+  // 实时读取当前节点的 status，用于控制「生成」按钮的 disabled / loading。
+  // pending 时锁住，其它态（未生成 / completed / failed）均允许重新生成。
+  const nodeStatus = useCanvasStore((s) => {
+    if (!activeNodeId) return undefined;
+    const node = s.nodes.find((n) => n.id === activeNodeId);
+    return node?.data?.status;
+  });
+  const isGenerating = nodeStatus === "pending";
 
   const nodeModelType = paramValues.model_type;
   const modelList = nodeModelType ? modelListMap[nodeModelType] || [] : [];
@@ -90,8 +100,52 @@ const BottomParamToolbar = ({
       ? "auto"
       : String(paramValues.aspect_ratio),
   );
-  // 提交加载状态
-  const [submitting, setSubmitting] = useState(false);
+  // 调用 AI 生成接口
+  const handleApiSubmit = async () => {
+    if (!editor || !activeNodeId) return;
+
+    if (isGenerating) return;
+    const params = {};
+    propList.forEach((prop) => {
+      const val = editor.data[prop.prop_str];
+      if (val === undefined || val === null || val === "") return;
+      const matched = prop.prop_values_list?.find(
+        (item) => item.prop_value_id === val,
+      );
+      params[prop.prop_str] = matched ? matched.prop_value_name : val;
+    });
+
+    const nodeData = {
+      nodeType,
+      params,
+      model_frame: activeFrameKey ?? "",
+      refAssetList: editor.data.refAssetList || [],
+      provider: currentSelectModel?.model_company ?? "",
+      model_name: currentSelectModel?.model_name ?? "",
+      model_id: editor.data.model_id || "",
+      prompt: editor.data.prompt || "",
+      negative_prompt: "",
+      team_id: editor.data.team_id || "",
+      vip_weight: editor.data.vip_weight || "",
+    };
+    const body = buildMediaBody(nodeData);
+    try {
+      const res = await createContent(body);
+      // 有 id 才注册 WS 监听（WS 会负责把 pending → completed/failed）
+      if (res?.id) {
+        updateNodeData(activeNodeId, { status: "pending" });
+        registerTask(activeNodeId, res.id);
+      }
+      message.success("生成任务已提交");
+    } catch (err) {
+      console.error("[生成失败]", err);
+      updateNodeData(activeNodeId, {
+        status: "failed",
+        error: err?.msg || err?.message || "生成失败，请重试",
+      });
+      message.error("生成失败，请重试");
+    }
+  };
 
   // 节点首次打开时自动填入第一个模型 + 默认参数（时长/比例/分辨率等）
   // 幂等保护：节点 data 已有 model_id 时跳过；不再用模块级 Set 记录节点 ID，
@@ -473,48 +527,6 @@ const BottomParamToolbar = ({
     },
   }));
 
-  // 调用 AI 生成接口
-  const handleApiSubmit = async () => {
-    if (!editor || !activeNodeId) return;
-    setSubmitting(true);
-    try {
-      // 从 propList 推导 params 的 key 集合，直接从 editor.data 读取值
-      // 存的就是 name，无需转换；旧数据若有 id 则反向查表兼容
-      const params = {};
-      propList.forEach((prop) => {
-        const val = editor.data[prop.prop_str];
-        if (val === undefined || val === null || val === "") return;
-        const matched = prop.prop_values_list?.find(
-          (item) => item.prop_value_id === val,
-        );
-        // 命中 id→name 查表说明是旧数据；未命中说明是新格式，直接用
-        params[prop.prop_str] = matched ? matched.prop_value_name : val;
-      });
-
-      const nodeData = {
-        nodeType,
-        params,
-        model_frame: activeFrameKey ?? "",
-        refAssetList: editor.data.refAssetList || [],
-        provider: currentSelectModel?.model_company ?? "",
-        model_name: currentSelectModel?.model_name ?? "",
-        model_id: editor.data.model_id || "",
-        prompt: editor.data.prompt || "",
-        negative_prompt: "",
-        team_id: editor.data.team_id || "",
-        vip_weight: editor.data.vip_weight || "",
-      };
-      const body = buildMediaBody(nodeData);
-      await createContent(body);
-      message.success("生成任务已提交");
-    } catch (err) {
-      console.error("[生成失败]", err);
-      message.error("生成失败，请重试");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   return (
     <div
       style={{
@@ -614,8 +626,9 @@ const BottomParamToolbar = ({
         </span>
         <Button
           shape="circle"
-          loading={submitting}
-          icon={submitting ? <LoadingOutlined /> : <ArrowUpOutlined />}
+          loading={isGenerating}
+          disabled={isGenerating}
+          icon={isGenerating ? <LoadingOutlined /> : <ArrowUpOutlined />}
           onClick={handleApiSubmit}
           style={{
             background: "#2c2c2c",

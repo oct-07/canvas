@@ -111,7 +111,7 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
 
   const aspectRatio = nodeData.aspect_ratio ?? DEFAULT_ASPECT_RATIO;
   const isVideo = nodeData.media_type === "video";
-  const hasContent = !!nodeData.fullurl;
+  const hasContent = !!nodeData.url;
 
   const processPendingUpload = useMemo(
     () => nodeData.pendingFile,
@@ -169,12 +169,10 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
           setUploadProgress(percent);
         });
 
-        const fullurl = result.fullurl || "";
-        const url = fullurl;
+        const url = result.url || "";
 
         const payload = {
           url,
-          fullurl,
           name: file.name,
           media_type: isVideoFile ? "video" : "image",
           aspect_ratio: DEFAULT_ASPECT_RATIO,
@@ -219,7 +217,7 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
 
   // 已存在远程素材，加载读取真实宽高更新尺寸
   useEffect(() => {
-    if (!nodeData.fullurl || nodeData.width || uploading) return;
+    if (!nodeData.url || nodeData.width || uploading) return;
 
     if (!isVideo) {
       // 图片读取宽高
@@ -231,11 +229,11 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
           height: img.naturalHeight,
         });
       };
-      img.src = nodeData.fullurl;
+      img.src = nodeData.url;
     } else {
       // 远程视频读取原生分辨率
       const tempVideo = document.createElement("video");
-      tempVideo.src = nodeData.fullurl;
+      tempVideo.src = nodeData.url;
       tempVideo.muted = true;
       tempVideo.onloadedmetadata = () => {
         updateNodeData(id, {
@@ -245,7 +243,7 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
         });
       };
     }
-  }, [nodeData.fullurl, isVideo, nodeData.width, uploading]);
+  }, [nodeData.url, isVideo, nodeData.width, uploading]);
 
   const handleFileSelect = async (e) => {
     console.log("[UploadMediaNode] handleFileSelect 被调用", Date.now());
@@ -295,13 +293,11 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
         setUploadProgress(percent);
       });
 
-      const fullurl = result.fullurl || "";
-      const url = fullurl;
+      const url = result.url || "";
 
       // 存入真实原生宽高
       const payload = {
         url,
-        fullurl,
         name: file.name,
         media_type: isVideoFile ? "video" : "image",
         aspect_ratio: DEFAULT_ASPECT_RATIO,
@@ -370,7 +366,7 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
         return (
           <video
             ref={videoRef}
-            src={nodeData.fullurl}
+            src={nodeData.url}
             controls
             controlsList="nodownload"
             muted
@@ -384,8 +380,10 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
           />
         );
       }
-      const thumbSrc = getThumbUrl(nodeData.fullurl);
+      
+      const thumbSrc = getThumbUrl(nodeData.url);
       return (
+        
         <div
           style={{
             position: "absolute",

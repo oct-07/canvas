@@ -140,7 +140,7 @@ export const useConnectionMagnet = () => {
         const mediaAsset = {
           id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: sourceNode.type,
-          url: sourceNode.data.fullurl || "",
+          url: sourceNode.data.url || "",
           name: sourceNode.data.name || "",
           sourceNodeId: source,
         };

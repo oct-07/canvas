@@ -121,6 +121,9 @@ export const createNodesSlice = (getStore, setStore) => ({
   removeNode: (nodeId) => {
     const { saveHistory } = getStore();
     saveHistory();
+    // 清理 WS 任务映射：节点删除时同步取消其未到终态的 task 监听
+    const { unregisterTask } = getStore();
+    unregisterTask?.(nodeId);
     setStore((state) => ({
       nodes: state.nodes.filter((node) => node.id !== nodeId),
       edges: state.edges.filter(

@@ -30,7 +30,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       id: asset.id || `upstream-${index}`,
       type: asset.type || "image",
       url: asset.url || "",
-      thumbnail: asset.thumbnail || asset.url || "",
+
       name: asset.name || "素材",
       sourceNodeId: asset.sourceNodeId || null,
     }));
@@ -74,17 +74,29 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       // 1. 从当前节点的 refAssetList 中移除该媒体（用 id 匹配）
       const currentRefAssetList = currentNode?.data?.refAssetList || [];
       const updatedRefAssetList = currentRefAssetList.filter(
-        (asset) => asset.id !== mediaRef.id
+        (asset) => asset.id !== mediaRef.id,
       );
 
       // 2. 直接基于真实编辑器 DOM 清理原子块，避免 prompt state 与 DOM 脱节
       const editorEl = document.getElementById("zyg-prompt-editor");
-      console.log("[remove-media] editorEl=", !!editorEl, "editorInnerHTML=", editorEl ? editorEl.innerHTML : null);
-      const currentPrompt = editorEl ? editorEl.innerHTML : promptRef.current || "";
+      console.log(
+        "[remove-media] editorEl=",
+        !!editorEl,
+        "editorInnerHTML=",
+        editorEl ? editorEl.innerHTML : null,
+      );
+      const currentPrompt = editorEl
+        ? editorEl.innerHTML
+        : promptRef.current || "";
       const parser = new DOMParser();
       const doc = parser.parseFromString(currentPrompt, "text/html");
       const tags = doc.querySelectorAll(`[data-asset-id="${mediaRef.id}"]`);
-      console.log("[remove-media] before cleanup tags=", tags.length, "currentPrompt=", currentPrompt);
+      console.log(
+        "[remove-media] before cleanup tags=",
+        tags.length,
+        "currentPrompt=",
+        currentPrompt,
+      );
       tags.forEach((tag) => {
         const outerShell = tag.closest('[contenteditable="false"]');
         if (outerShell) outerShell.remove();
@@ -109,7 +121,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
         removeEdgesBySourceNode(mediaRef.sourceNodeId, activeNodeId);
       }
     },
-    [activeNodeId, currentNode, updateNodeData]
+    [activeNodeId, currentNode, updateNodeData],
   );
 
   // 全局状态统一放在父组件
@@ -149,22 +161,22 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
 
       // 设置新的定时器，300ms 后保存
       saveTimerRef.current = setTimeout(() => {
-        console.log('[3] 300ms 防抖到期，真正写入 store, updates =', updates);
+        console.log("[3] 300ms 防抖到期，真正写入 store, updates =", updates);
         updateNodeData(activeNodeId, updates);
         saveTimerRef.current = null;
       }, 300);
     },
-    [activeNodeId, updateNodeData]
+    [activeNodeId, updateNodeData],
   );
 
   // prompt 变化时同步到 node.data
   const handlePromptChange = useCallback(
     (newHtml) => {
-      console.log('[2] handlePromptChange 收到 newHtml =', newHtml);
+      console.log("[2] handlePromptChange 收到 newHtml =", newHtml);
       setPrompt(newHtml);
       syncToNodeData({ prompt: newHtml });
     },
-    [syncToNodeData]
+    [syncToNodeData],
   );
 
   // refAssetList 变化时同步到 node.data
@@ -176,14 +188,14 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       const updatedRefAssetList = newAssetList.map((asset) => ({
         id: asset.id,
         type: asset.type === "video" ? "video" : "image",
-        url: asset.url || asset.image || "",
-        thumbnail: asset.thumbnail || asset.image || "",
+        url: asset.url || "",
+
         name: asset.label || asset.name || "素材",
         sourceNodeId: asset.sourceNodeId || null,
       }));
       syncToNodeData({ refAssetList: updatedRefAssetList });
     },
-    [syncToNodeData]
+    [syncToNodeData],
   );
 
   // 组件卸载时清理定时器

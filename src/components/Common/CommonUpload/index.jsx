@@ -26,7 +26,7 @@ const CommonUpload = ({
       message.success("素材上传完成");
       // 上传成功回调，cover传图片url，button传完整素材对象
       if (mode === "cover") {
-        onChange?.(resData.fullurl);
+        onChange?.(resData.url);
       } else {
         onChange?.(resData);
       }

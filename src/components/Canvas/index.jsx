@@ -128,6 +128,12 @@ const CanvasContent = () => {
     // 两种模型
     loadModelSkuParams("1");
     loadModelSkuParams("2");
+    // 启动 WS：用于接收生成任务终态（task_completed / task_failed）
+    useCanvasStore.getState().connectWs?.();
+    return () => {
+      // 卸载时关闭 WS；Map 内容随 store 销毁自动清理
+      useCanvasStore.getState().shutdownWs?.();
+    };
   }, [loadModelSkuParams, fetchStyleList]);
 
   const [canvasName, setCanvasName] = useState("");
@@ -220,7 +226,7 @@ const CanvasContent = () => {
         const mediaAsset = {
           id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           type: sourceNode.type,
-          url: sourceNode.data.fullurl || "",
+          url: sourceNode.data.url || "",
           name: sourceNode.data.name || "",
           sourceNodeId: source,
         };

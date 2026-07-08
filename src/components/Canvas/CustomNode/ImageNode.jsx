@@ -13,6 +13,7 @@ import {
   useMediaToolbarActions,
   useShowToolbar,
 } from "./NodeCommon";
+import GenerationOverlay from "./NodeCommon/GenerationOverlay";
 
 const IMAGE_NODE_WIDTH = 400;
 const DEFAULT_ASPECT_RATIO = "227";
@@ -35,14 +36,14 @@ const ImageNode = memo(({ id, data, selected }) => {
 
   const nodeData = editor?.data ?? data ?? {};
   const aspectRatio = nodeData.aspect_ratio || DEFAULT_ASPECT_RATIO;
-  const hasFullurl = !!nodeData.fullurl;
+  const hasUrl = !!nodeData.url;
 
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(nodeData.name || "");
   const nameInputRef = useRef(null);
 
-  // 单选时才浮工具栏；仅在有真实素材（fullurl）时接入，避免空节点误显
+  // 单选时才浮工具栏；仅在有真实素材（url）时接入，避免空节点误显
   const showToolbar = useShowToolbar(id, selected);
   const { handleCrop, handleRotate, handleDownload, handleFullscreen } =
     useMediaToolbarActions({ id, data: nodeData, mediaType: "image" });
@@ -150,7 +151,7 @@ const ImageNode = memo(({ id, data, selected }) => {
             : "#1f1f1f",
         }}
       >
-        {!(nodeData.url || nodeData.thumbnail) && (
+        {!nodeData.url && (
           <div
             style={{
               position: "absolute",
@@ -164,6 +165,12 @@ const ImageNode = memo(({ id, data, selected }) => {
           </div>
         )}
       </div>
+
+      {/* 生成遮罩：pending 转圈 / failed 显示错误文案。
+       */}
+      {(nodeData.status === "pending" || nodeData.status === "failed") && (
+        <GenerationOverlay status={nodeData.status} error={nodeData.error} />
+      )}
 
       {/* 节点名称标签，浮动在盒子上方，支持点击编辑 */}
       {isEditingName ? (
@@ -230,7 +237,7 @@ const ImageNode = memo(({ id, data, selected }) => {
       />
 
       {/* 仅当真实素材生成后才展示通用工具栏（裁剪/旋转/下载/全屏） */}
-      {hasFullurl && (
+      {hasUrl && (
         <MediaNodeToolbar
           id={id}
           showToolbar={showToolbar}

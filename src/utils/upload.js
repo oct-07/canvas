@@ -37,7 +37,6 @@ export function uploadMedia(file, extraParams = {}, onProgress) {
     }
     return {
       url,
-      fullurl: res.code?.fullurl || url,
       duration: res.code?.duration || 0,
     };
   });

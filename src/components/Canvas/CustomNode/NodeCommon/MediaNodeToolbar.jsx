@@ -1,9 +1,4 @@
-import {
-  HighlightOutlined,
-  RedoOutlined,
-  VerticalAlignBottomOutlined,
-  FullscreenOutlined,
-} from "@ant-design/icons";
+import { VerticalAlignBottomOutlined } from "@ant-design/icons";
 import { NodeToolbar, Position } from "@xyflow/react";
 import { memo } from "react";
 
@@ -67,7 +62,7 @@ const MediaNodeToolbar = memo(
         }}
       >
         {/* 裁剪 */}
-        <button
+        {/* <button
           type="button"
           onClick={onCrop}
           onMouseDown={stopNodeEvent}
@@ -75,9 +70,9 @@ const MediaNodeToolbar = memo(
           style={toolbarBtnStyle}
         >
           <HighlightOutlined style={toolbarIconStyle} />
-        </button>
+        </button> */}
         {/* 旋转 */}
-        <button
+        {/* <button
           type="button"
           onClick={onRotate}
           onMouseDown={stopNodeEvent}
@@ -85,7 +80,7 @@ const MediaNodeToolbar = memo(
           style={toolbarBtnStyle}
         >
           <RedoOutlined style={toolbarIconStyle} />
-        </button>
+        </button> */}
         {/* 下载 */}
         <button
           type="button"
@@ -97,7 +92,7 @@ const MediaNodeToolbar = memo(
           <VerticalAlignBottomOutlined style={toolbarIconStyle} />
         </button>
         {/* 全屏预览 */}
-        <button
+        {/* <button
           type="button"
           onClick={onFullscreen}
           onMouseDown={stopNodeEvent}
@@ -105,7 +100,7 @@ const MediaNodeToolbar = memo(
           style={toolbarBtnStyle}
         >
           <FullscreenOutlined style={toolbarIconStyle} />
-        </button>
+        </button> */}
       </NodeToolbar>
     );
   },

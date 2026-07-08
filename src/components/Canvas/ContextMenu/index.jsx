@@ -1,6 +1,5 @@
 import useCanvasStore from "@/store/canvasStore";
 import {
-  ArrowUpOutlined,
   CloudUploadOutlined,
   CopyOutlined,
   PictureOutlined,
@@ -79,8 +78,12 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
     // 但保守处理防止其他路径触发
     e.stopPropagation();
 
-    const menuX = Number(uploadInputRef.current?.dataset.menuX || contextMenu.x);
-    const menuY = Number(uploadInputRef.current?.dataset.menuY || contextMenu.y);
+    const menuX = Number(
+      uploadInputRef.current?.dataset.menuX || contextMenu.x,
+    );
+    const menuY = Number(
+      uploadInputRef.current?.dataset.menuY || contextMenu.y,
+    );
 
     // 上传文件选择后，创建带 pendingFile 的节点，实际上传由 UploadMediaNode useEffect 处理
     onAddUpload({ x: menuX, y: menuY, file });
@@ -89,18 +92,6 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
     if (uploadInputRef.current) {
       uploadInputRef.current.value = "";
     }
-  };
-
-  /**
-   * 复制选中的节点到剪贴板
-   */
-  const handleCopy = () => {
-    const { nodes, copyNode } = useCanvasStore.getState();
-    const node = nodes.find((n) => n.id === selectedNodeId);
-    if (node) {
-      copyNode(node);
-    }
-    hideContextMenu();
   };
 
   /**
@@ -195,12 +186,6 @@ const ContextMenu = ({ onAddImage, onAddVideo, onAddUpload }) => {
 
     if (contextMenu.target === "node") {
       return [
-        {
-          key: "copy",
-          label: "复制",
-          icon: <UpCircleOutlined />,
-          onClick: handleCopy,
-        },
         {
           key: "duplicate",
           label: "创建副本",

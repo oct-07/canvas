@@ -2,16 +2,16 @@ import useCanvasStore from "@/store/canvasStore";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { getThumbUrl } from "@/utils/thumbnail";
 import { uploadMedia } from "@/utils/upload";
-import {
-  HighlightOutlined,
-  RedoOutlined,
-  VerticalAlignBottomOutlined,
-} from "@ant-design/icons";
-import { NodeToolbar, Position, useUpdateNodeInternals } from "@xyflow/react";
-import { Input, message } from "antd";
+import { Position, useUpdateNodeInternals } from "@xyflow/react";
+import { Input } from "antd";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
+import {
+  MediaNodeToolbar,
+  useMediaToolbarActions,
+  useShowToolbar,
+} from "./NodeCommon";
 
 // 最大和最小宽度限制
 const MAX_NODE_WIDTH = 400; // 最大节点宽度
@@ -76,18 +76,13 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
 
   const draggingNodeId = useCanvasStore((state) => state.draggingNodeId);
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
-  // 仅依靠 ReactFlow 传入的 selected 在多选时会被同时置为 true，无法区分单选/多选
-  // 订阅 store 中的"焦点节点 id"与画布上 selected 节点总数，
-  // 仅在"画布上恰好只有一个 selected 节点且焦点就是当前 id"时才展示工具栏。
-  const selectedNodeId = useCanvasStore((state) => state.selectedNodeId);
-  const selectedCount = useCanvasStore(
-    (state) => (state.nodes ?? []).filter((n) => n.selected).length,
-  );
-  // 单一选中（当前 id = store 焦点 id，且画布上恰好只有一个 selected 节点）才展示工具栏
-  const showToolbar =
-    selected === true && selectedNodeId === id && selectedCount === 1;
+  // 抽出到 NodeCommon/useShowToolbar：避免多选时多个节点同时浮工具栏
+  const showToolbar = useShowToolbar(id, selected);
 
   const nodeData = data ?? {};
+  const mediaType = nodeData.media_type; // "image" | "video"
+  const { handleCrop, handleRotate, handleDownload, handleFullscreen } =
+    useMediaToolbarActions({ id, data: nodeData, mediaType });
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -369,67 +364,6 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
     }
   };
 
-  /**
-   * 工具栏四个操作的统一前置处理：阻止冒泡防止误触发节点拖拽、阻止触发文件 input，
-   * 同时在未实现具体业务逻辑前给出交互反馈。
-   */
-  const stopNodeEvent = (e) => {
-    e.stopPropagation();
-    e.preventDefault();
-  };
-
-  /**
-   * 裁剪素材：尚未接入真实业务逻辑，先给出占位提示；接入点见 TODO。
-   */
-  const handleCrop = (e) => {
-    stopNodeEvent(e);
-    // TODO: 接入裁剪面板（可参考 FloatingEditor 的参数工具栏或调用独立的 CropModal）
-    message.info("裁剪功能开发中");
-  };
-
-  /**
-   * 旋转素材：将节点旋转角度累加 90° 并写回 store，作为最轻量的可点击反馈；
-   * 若需要基于真实图片/视频做像素级旋转，后续替换为 canvas 处理。
-   */
-  const handleRotate = (e) => {
-    stopNodeEvent(e);
-    const nextRotate = ((nodeData.rotate ?? 0) + 90) % 360;
-    updateNodeData(id, { rotate: nextRotate });
-    message.success(`已旋转至 ${nextRotate}°`);
-  };
-
-  /**
-   * 下载素材：通过 a 标签触发浏览器原生下载（绕开 CORS/Blob 兼容性问题）；
-   * 远程资源需后端支持 download 头，否则会直接打开新标签页。
-   */
-  const handleDownload = (e) => {
-    stopNodeEvent(e);
-    if (!nodeData.fullurl) {
-      message.warning("暂无素材可下载");
-      return;
-    }
-    const link = document.createElement("a");
-    link.href = nodeData.fullurl;
-    link.download = nodeData.name || "media";
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  /**
-   * 全屏预览：在新窗口打开远程素材（占位实现，待接入内置预览器）。
-   */
-  const handleFullscreen = (e) => {
-    stopNodeEvent(e);
-    if (!nodeData.fullurl) {
-      message.warning("暂无素材可预览");
-      return;
-    }
-    window.open(nodeData.fullurl, "_blank", "noopener,noreferrer");
-  };
-
   const renderContent = () => {
     if (hasContent) {
       if (isVideo) {
@@ -604,55 +538,14 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
         offsetKey="right"
       />
 
-      <NodeToolbar
-        nodeId={id}
-        isSelected={showToolbar}
-        position={Position.Top}
-        offset={10}
-        // 显隐淡入淡出，与画布暗色风格统一
-        style={{
-          display: showToolbar ? "flex" : "none",
-          alignItems: "center",
-          gap: 8,
-          padding: "6px 10px",
-          background: "#1f1f1f",
-          borderRadius: 8,
-          boxShadow: "0 6px 18px rgba(0, 0, 0, 0.45)",
-          // 不拦截穿透，避免阻断画布空白处点击清空选中
-          pointerEvents: showToolbar ? "auto" : "none",
-        }}
-      >
-        {/* 裁剪 */}
-        <button
-          type="button"
-          onClick={handleCrop}
-          onMouseDown={stopNodeEvent}
-          aria-label="裁剪"
-          style={toolbarBtnStyle}
-        >
-          <HighlightOutlined style={toolbarIconStyle} />
-        </button>
-        {/* 旋转 */}
-        <button
-          type="button"
-          onClick={handleRotate}
-          onMouseDown={stopNodeEvent}
-          aria-label="旋转"
-          style={toolbarBtnStyle}
-        >
-          <RedoOutlined style={toolbarIconStyle} />
-        </button>
-        {/* 下载 */}
-        <button
-          type="button"
-          onClick={handleDownload}
-          onMouseDown={stopNodeEvent}
-          aria-label="下载"
-          style={toolbarBtnStyle}
-        >
-          <VerticalAlignBottomOutlined style={toolbarIconStyle} />
-        </button>
-      </NodeToolbar>
+      <MediaNodeToolbar
+        id={id}
+        showToolbar={showToolbar}
+        onCrop={handleCrop}
+        onRotate={handleRotate}
+        onDownload={handleDownload}
+        onFullscreen={handleFullscreen}
+      />
 
       <input
         ref={fileInputRef}
@@ -664,26 +557,6 @@ const UploadMediaNode = memo(({ id, data, selected }) => {
     </div>
   );
 });
-//工具样式
-const toolbarBtnStyle = {
-  width: 28,
-  height: 28,
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 0,
-  background: "transparent",
-  border: "none",
-  borderRadius: 6,
-  color: "#ffffff",
-  cursor: "pointer",
-  transition: "background 0.15s ease",
-};
-
-const toolbarIconStyle = {
-  fontSize: 16,
-  color: "#ffffff",
-};
 
 UploadMediaNode.displayName = "UploadMediaNode";
 

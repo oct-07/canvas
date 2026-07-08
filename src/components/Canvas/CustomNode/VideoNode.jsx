@@ -8,6 +8,11 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import PlusHandle from "../CustomPoint/PlusHandle";
 import { useNodeMagnet } from "../CustomPoint/useMagnetStore";
 import FloatingEditor from "../FloatingEditor";
+import {
+  MediaNodeToolbar,
+  useMediaToolbarActions,
+  useShowToolbar,
+} from "./NodeCommon";
 
 // 与图片节点保持一致的默认宽度，确保两种节点初始高宽相同
 const VIDEO_NODE_WIDTH = 400;
@@ -36,11 +41,17 @@ const VideoNode = memo(({ id, data, selected }) => {
 
   const nodeData = editor?.data ?? data ?? {};
   const aspectRatio = nodeData.aspect_ratio ?? DEFAULT_ASPECT_RATIO;
+  const hasFullurl = !!nodeData.fullurl;
 
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(nodeData.name || "");
   const nameInputRef = useRef(null);
+
+  // 单选时才浮工具栏；仅在有真实视频素材（fullurl）时接入，避免空节点误显
+  const showToolbar = useShowToolbar(id, selected);
+  const { handleCrop, handleRotate, handleDownload, handleFullscreen } =
+    useMediaToolbarActions({ id, data: nodeData, mediaType: "video" });
 
   // 当 nodeData.name 从外部变化时同步本地编辑状态
   useEffect(() => {
@@ -229,6 +240,18 @@ const VideoNode = memo(({ id, data, selected }) => {
         id="output"
         offsetKey="right"
       />
+
+      {/* 仅当真实视频生成后才展示通用工具栏（裁剪/旋转/下载/全屏） */}
+      {hasFullurl && (
+        <MediaNodeToolbar
+          id={id}
+          showToolbar={showToolbar}
+          onCrop={handleCrop}
+          onRotate={handleRotate}
+          onDownload={handleDownload}
+          onFullscreen={handleFullscreen}
+        />
+      )}
 
       {/* 节点浮窗：常驻挂载，仅在打开时显示；当前节点被拖动时强制透明，
           保留组件内部 useState（避免提交后输入丢失，与 P0 评审 2.2 同源修复） */}

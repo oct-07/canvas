@@ -24,7 +24,7 @@ const createAxiosInstance = (options = {}) => {
       }
 
       // 临时测试固定token
-      const fixedToken = "c8175917-0c19-4d50-9383-8a5360a76c43";
+      const fixedToken = "b4e735d8-9540-412c-b4fd-46704f31d108";
       config.headers.token = fixedToken;
       config.headers.TeamId = 3;
       return config;

@@ -271,12 +271,11 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
     setImageUrl(nodeData.imageUrl ?? "");
     setParams(nodeData.params ?? params);
     // 同步回填到 editor.data，确保 BottomParamToolbar 等组件能读取到正确数据
+    // 注意：不要强制设置 aspect_ratio 的默认值，让 BottomParamToolbar 的 initNodeDefaults
+    // 根据实际加载的模型来设置正确的默认值
     if (activeNodeId) {
       setNodeEditorData(activeNodeId, {
         ...nodeData,
-        // 确保 aspect_ratio 有值（必须用 prop_value_id，不能用 prop_value_name）
-        // 默认使用 id="227" 对应的 "1:1" 比例
-        aspect_ratio: nodeData.aspect_ratio || "227",
       });
     }
   }, [activeNodeId, currentNode, setNodeEditorData]);

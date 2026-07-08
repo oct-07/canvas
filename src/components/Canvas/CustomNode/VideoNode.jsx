@@ -17,7 +17,8 @@ import GenerationOverlay from "./NodeCommon/GenerationOverlay";
 
 // 与图片节点保持一致的默认宽度，确保两种节点初始高宽相同
 const VIDEO_NODE_WIDTH = 400;
-const DEFAULT_ASPECT_RATIO = "227";
+// 视频模型（model_type: 1）的 aspect_ratio 第一个选项 id 是 "260"，对应 "1:1"
+const DEFAULT_ASPECT_RATIO = "260";
 
 /**
  * 视频节点组件 - 显示视频缩略图的节点

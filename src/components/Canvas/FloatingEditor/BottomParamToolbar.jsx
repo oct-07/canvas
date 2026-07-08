@@ -8,6 +8,13 @@ import {
   getParamValueChinese,
 } from "@/utils/paramsMap.js";
 import {
+  adaptModel,
+  calcPoint,
+  migrateParams,
+  getValidOptions,
+  getParamLabel,
+} from "@/utils/modelAdapter";
+import {
   ArrowUpOutlined,
   LoadingOutlined,
   NotificationOutlined,
@@ -75,10 +82,6 @@ const BottomParamToolbar = ({
   // editor.data 可能还没回填，fallback 到 nodes 中的数据
   const paramValues = editor?.data || currentNode?.data || {};
 
-  // 用 ref 跟踪参数值变化，只在真正变化时触发积分计算
-  const paramValuesRef = useRef(null);
-  const prevParamValuesStr = useRef("");
-
   // 实时读取当前节点的 status，用于控制「生成」按钮的 disabled / loading。
   // pending 时锁住，其它态（未生成 / completed / failed）均允许重新生成。
   const nodeStatus = useCanvasStore((s) => {
@@ -93,20 +96,12 @@ const BottomParamToolbar = ({
 
   // 根据当前节点 data.model_id 从 modelList 中查找对应的模型
   const currentModelId = paramValues.model_id;
-  const currentSelectModel =
-    modelList.find((m) => m.id === currentModelId) || null;
+  // rawModel：后端原始模型数据，用于接口提交等需要原始字段的场景
+  const rawModel = modelList.find((m) => m.id === currentModelId) || null;
+  // modelSpec：适配后的统一规格对象，用于 propSpecs / calcPoint / getValidOptions
+  const modelSpec = adaptModel(rawModel);
+  const propList = modelSpec?.propSpecs || [];
 
-  //  prop_list 从当前节点对应的模型里取，而不是全局状态
-  const propList = currentSelectModel?.prop_list || [];
-  // 积分映射表
-  const pointMap = currentSelectModel?.point_list || {};
-
-  // 比例选中状态：优先从已保存参数里恢复（存储格式是 prop_value_name）
-  const getInitialRatioKey = () => {
-    if (paramValues.aspect_ratio == null) return "auto";
-    return String(paramValues.aspect_ratio);
-  };
-  const [currentRatio, setCurrentRatio] = useState(getInitialRatioKey);
   // 调用 AI 生成接口
   const handleApiSubmit = async () => {
     if (!editor || !activeNodeId) return;
@@ -114,9 +109,9 @@ const BottomParamToolbar = ({
     if (isGenerating) return;
     const params = {};
     propList.forEach((prop) => {
-      const val = editor.data[prop.prop_str];
+      const val = editor.data[prop.propKey];
       if (val === undefined || val === null || val === "") return;
-      params[prop.prop_str] = val;
+      params[prop.propKey] = val;
     });
 
     // 走 ref：让 PromptInputArea 从真实 DOM 解析，把原子块替换为「图片1 / 视频1」纯文本
@@ -129,8 +124,8 @@ const BottomParamToolbar = ({
       params,
       model_frame: activeFrameKey ?? "",
       refAssetList: editor.data.refAssetList || [],
-      provider: currentSelectModel?.model_company ?? "",
-      model_name: currentSelectModel?.model_name ?? "",
+      provider: rawModel?.model_company ?? "",
+      model_name: rawModel?.model_name ?? "",
       model_id: editor.data.model_id || "",
       prompt: finalPrompt,
       negative_prompt: "",
@@ -166,21 +161,18 @@ const BottomParamToolbar = ({
     const firstModel = modelList[0];
     if (!firstModel) return;
 
+    const firstSpec = adaptModel(firstModel);
     const newData = {
       ...paramValues,
       model_id: firstModel.id,
       model_name: firstModel.model_name,
       model_frame: firstModel.model_frame,
     };
-    firstModel.prop_list?.forEach((prop) => {
-      if (
-        Array.isArray(prop.prop_values_list) &&
-        prop.prop_values_list.length > 0
-      ) {
+    firstSpec?.propSpecs?.forEach((prop) => {
+      if (Array.isArray(prop.options) && prop.options.length > 0) {
         // 仅当节点 data 中没有该 prop 的值时才写入默认值
-        if (newData[prop.prop_str] === undefined) {
-          const firstVal = prop.prop_values_list[0];
-          newData[prop.prop_str] = firstVal.prop_value_id;
+        if (newData[prop.propKey] === undefined) {
+          newData[prop.propKey] = prop.options[0].id;
         }
       }
     });
@@ -188,72 +180,20 @@ const BottomParamToolbar = ({
   };
 
   // 主触发：节点切换时立即尝试初始化
+  // 同时监听 modelList.length 确保模型数据加载后才初始化
   useEffect(() => {
     initNodeDefaults();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeNodeId]);
-
-  // 兜底：modelList 异步到达后重新尝试初始化（覆盖 loadModelSkuParams
-  // 尚未完成时首次打开的场景）
-  useEffect(() => {
-    initNodeDefaults();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [modelList.length]);
+  }, [activeNodeId, modelList.length]);
 
   // 积分计算相关状态
-  const consumePointRef = useRef(0);
-  const lastCalcKeyRef = useRef(""); // 存储上一次的 combineKey，用于判断是否真正变化
-
-  // 积分计算函数
-  const calculatePoint = () => {
-    if (!currentSelectModel?.point_list || propList.length === 0) {
-      return { key: "", point: 0 };
-    }
-
-    const valueIds = [];
-    propList.forEach((prop) => {
-      const val = paramValues[prop.prop_str];
-      if (val === null || val === undefined || val === "") return;
-      valueIds.push(val);
-    });
-
-    if (valueIds.length === 0) {
-      return { key: "", point: 0 };
-    }
-
-    // 使用安全的数字排序，优先按数字排序，非数字值按字符串排序
-    const sortedValueIds = [...valueIds].sort((a, b) => {
-      const numA = Number(a);
-      const numB = Number(b);
-      if (!isNaN(numA) && !isNaN(numB)) {
-        return numA - numB;
-      }
-      return String(a).localeCompare(String(b));
-    });
-    const combineKey = sortedValueIds.join(",");
-    const point = currentSelectModel.point_list[combineKey] ?? 0;
-
-    return { key: combineKey, point, valueIds };
-  };
+  const [consumePoint, setConsumePoint] = useState(0);
 
   // 使用 useEffect 监听参数和模型变化，确保在 React 重新渲染后再计算
-  // 这样可以避免闭包捕获旧值的问题
   useEffect(() => {
-    const { key, point, valueIds } = calculatePoint();
-
-    // 只有 combineKey 真正变化时才更新并打印日志
-    if (lastCalcKeyRef.current !== key) {
-      lastCalcKeyRef.current = key;
-      consumePointRef.current = point;
-      console.log("[积分计算日志]", {
-        所有选中valueId: valueIds,
-        排序后key: key,
-        当前匹配积分: point,
-      });
-    }
-  }, [activeNodeId, currentSelectModel?.id, JSON.stringify(paramValues)]);
-
-  const consumePoint = consumePointRef.current;
+    const { point, key, hit } = calcPoint(modelSpec, paramValues);
+    setConsumePoint(point);
+  }, [modelSpec?.id, JSON.stringify(paramValues)]);
 
   // 参数修改回调
   const handleParamChange = (propKey, value) => {
@@ -281,7 +221,7 @@ const BottomParamToolbar = ({
 
     return propList
       .map((prop) => {
-        const currentVal = paramValues[prop.prop_str];
+        const currentVal = paramValues[prop.propKey];
         if (
           currentVal === undefined ||
           currentVal === null ||
@@ -290,44 +230,28 @@ const BottomParamToolbar = ({
           return null;
         }
 
-        let label = currentVal;
-        if (prop.prop_values_list?.length) {
-          const matched = prop.prop_values_list.find(
-            (item) =>
-              item.prop_value_id === currentVal ||
-              item.prop_value_name === currentVal,
-          );
-          if (matched) {
-            label = getParamValueChinese(matched.prop_value_name);
-          }
-        }
-
-        const title = getParamChineseName(prop.prop_str, prop.prop_name);
-
         // 音频开关类型，返回图标标识
-        if (prop.prop_viewtype === 4) {
-          // 兜底无选项直接返回空
-          if (
-            !Array.isArray(prop.prop_values_list) ||
-            prop.prop_values_list.length === 0
-          ) {
-            return null;
-          }
-          const trueItem = prop.prop_values_list.find(
-            (item) => String(item.prop_value_name) === "true",
+        if (prop.viewType === "switch") {
+          if (!prop.options?.length) return null;
+          const trueOption = prop.options.find(
+            (o) => String(o.name) === "true",
           );
-          const isOpen = String(currentVal) === trueItem?.prop_value_id;
+          const isOpen = String(currentVal) === trueOption?.id;
           return {
-            key: prop.prop_str,
+            key: prop.propKey,
             isAudioIcon: true,
             iconNode: isOpen ? <SoundOutlined /> : <NotificationOutlined />,
           };
         }
 
+        const title = getParamChineseName(prop.propKey, prop.propName);
+        const label =
+          getParamLabel(modelSpec, paramValues, prop.propKey) || currentVal;
+
         // 普通文字参数
         return {
           label: `${title}: ${label}`,
-          key: prop.prop_str,
+          key: prop.propKey,
           isAudioIcon: false,
         };
       })
@@ -377,31 +301,23 @@ const BottomParamToolbar = ({
   };
   // 渲染单条参数
   const renderSingleParam = (prop) => {
-    const {
-      prop_id,
-      prop_str,
-      prop_name,
-      prop_viewtype,
-      prop_values_list = [],
-    } = prop;
-    const title = getParamChineseName(prop_str, prop_name);
-    const currentVal = paramValues[prop_str];
+    const { propKey, propName, viewType, options = [] } = prop;
+    const title = getParamChineseName(propKey, propName);
+    const currentVal = paramValues[propKey];
 
-    if (prop_str === "aspect_ratio" && prop_values_list.length) {
-      // options 的 value 用 prop_value_id，存储和匹配都统一用 id
-      const options = prop_values_list.map((item) => {
-        const matchedRatio = RATIO_LIST.find(
-          (r) => r.label === item.prop_value_name,
-        );
+    if (propKey === "aspect_ratio" && options.length) {
+      // options 的 value 用 id，存储和匹配都统一用 id
+      const ratioOptions = options.map((opt) => {
+        const matchedRatio = RATIO_LIST.find((r) => r.label === opt.name);
         return {
-          label: item.prop_value_name,
-          value: item.prop_value_id,
+          label: opt.name,
+          value: opt.id,
           ratio: matchedRatio?.ratio || null,
         };
       });
-      const currentId = paramValues[prop_str];
+      const currentId = paramValues[propKey];
       return (
-        <div style={{ marginBottom: "16px" }} key={prop_id}>
+        <div style={{ marginBottom: "16px" }} key={propKey}>
           <div
             style={{
               fontSize: "16px",
@@ -413,7 +329,7 @@ const BottomParamToolbar = ({
           </div>
           {/* 比例选择网格：5 列布局 */}
           <div style={ratioGridStyle}>
-            {options.map((opt) => {
+            {ratioOptions.map((opt) => {
               const isSelected = String(currentVal) === String(opt.value);
               return (
                 <div
@@ -445,13 +361,13 @@ const BottomParamToolbar = ({
       );
     }
 
-    if ([1, 2, 3].includes(prop_viewtype)) {
-      const options = prop_values_list.map((item) => ({
-        label: item.prop_value_name,
-        value: item.prop_value_id,
+    if (["radio", "duration", "resolution"].includes(viewType)) {
+      const radioOptions = getValidOptions(modelSpec, propKey).map((opt) => ({
+        label: opt.name,
+        value: opt.id,
       }));
       return (
-        <div style={{ marginBottom: "16px" }} key={prop_id}>
+        <div style={{ marginBottom: "16px" }} key={propKey}>
           <div
             style={{
               fontSize: "16px",
@@ -463,11 +379,11 @@ const BottomParamToolbar = ({
           </div>
           <Radio.Group
             value={currentVal}
-            onChange={(e) => handleParamChange(prop_str, e.target.value)}
+            onChange={(e) => handleParamChange(propKey, e.target.value)}
             buttonStyle="solid"
           >
             <Space wrap size={8}>
-              {options.map((opt) => (
+              {radioOptions.map((opt) => (
                 <Radio.Button key={opt.value} value={opt.value}>
                   {getParamValueChinese(opt.label)}
                 </Radio.Button>
@@ -478,16 +394,11 @@ const BottomParamToolbar = ({
       );
     }
 
-    if (prop.prop_viewtype === 4) {
-      // 拿到开关对应的两个id
-      const trueItem = prop.prop_values_list.find(
-        (item) => String(item.prop_value_name) === "true",
-      );
-      const falseItem = prop.prop_values_list.find(
-        (item) => String(item.prop_value_name) === "false",
-      );
+    if (viewType === "switch") {
+      const trueOption = options.find((o) => String(o.name) === "true");
+      const falseOption = options.find((o) => String(o.name) === "false");
       return (
-        <div style={{ marginBottom: "16px" }} key={prop_id}>
+        <div style={{ marginBottom: "16px" }} key={propKey}>
           <div
             style={{
               fontSize: "16px",
@@ -499,16 +410,16 @@ const BottomParamToolbar = ({
           </div>
           <Space>
             <Switch
-              checked={String(currentVal) === trueItem?.prop_value_id}
+              checked={String(currentVal) === trueOption?.id}
               onChange={(checked) => {
                 handleParamChange(
-                  prop.prop_str,
-                  checked ? trueItem.prop_value_id : falseItem.prop_value_id,
+                  propKey,
+                  checked ? trueOption.id : falseOption.id,
                 );
               }}
             />
             <span>
-              {String(currentVal) === trueItem?.prop_value_id ? "开启" : "关闭"}
+              {String(currentVal) === trueOption?.id ? "开启" : "关闭"}
             </span>
           </Space>
         </div>
@@ -536,20 +447,23 @@ const BottomParamToolbar = ({
     );
   };
 
-  // 下拉菜单：点击写入当前节点 data.model_id
+  // 下拉菜单：点击写入当前节点 data.model_id，并迁移参数
   const modelMenuItems = (modelList || []).map((item) => ({
     label: item.model_name,
     key: item.id,
     onClick: () => {
       if (!editor || !activeNodeId) return;
-      const newEditorData = {
+      const newRaw = modelList.find((m) => m.id === item.id);
+      const newSpec = adaptModel(newRaw);
+      const migrated = migrateParams(modelSpec, editor.data, newSpec);
+
+      updateNodeEditorData(activeNodeId, {
         ...editor.data,
+        ...migrated,
         model_id: item.id,
         model_name: item.model_name,
         model_frame: item.model_frame,
-      };
-      updateNodeEditorData(activeNodeId, newEditorData);
-      // 积分计算由 useEffect 自动处理，无需手动调用
+      });
     },
   }));
 
@@ -587,7 +501,7 @@ const BottomParamToolbar = ({
             }}
           >
             {/* 读取仓库全局选中模型展示文字 */}
-            {currentSelectModel?.model_name || "请选择模型"}
+            {modelSpec?.name || "请选择模型"}
           </Button>
         </Dropdown>
 

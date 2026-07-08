@@ -14,12 +14,12 @@ export const saveCanvas = (data) => {
   return post("/index/canvas/save", data);
 };
 
+//会员信息
+export const getMemberInfo = (params) => {
+  return get("/index/member/getMemberInfo", params);
+};
 export default {
   getCanvasDetail,
   saveCanvas,
-};
-
-//图片视频下载
-export const dowloadMedia = (params) => {
-  return get("/index/index/imageDownload", params);
+  getMemberInfo,
 };

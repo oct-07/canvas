@@ -15,7 +15,7 @@ import {
   StarOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, message, Popover, Radio, Space, Switch } from "antd";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // 比例数据源：固定 key、展示文案、宽高比值
 // 底层公式：height = width ÷ (w / h)
@@ -72,6 +72,10 @@ const BottomParamToolbar = ({
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
   const paramValues = editor?.data || {};
 
+  // 用 ref 跟踪参数值变化，只在真正变化时触发积分计算
+  const paramValuesRef = useRef(null);
+  const prevParamValuesStr = useRef("");
+
   // 实时读取当前节点的 status，用于控制「生成」按钮的 disabled / loading。
   // pending 时锁住，其它态（未生成 / completed / failed）均允许重新生成。
   const nodeStatus = useCanvasStore((s) => {
@@ -94,12 +98,12 @@ const BottomParamToolbar = ({
   // 积分映射表
   const pointMap = currentSelectModel?.point_list || {};
 
-  // 比例选中状态：优先从已保存参数里恢复；统一存为字符串与 RATIO_LIST.key 对齐
-  const [currentRatio, setCurrentRatio] = useState(() =>
-    paramValues.aspect_ratio == null
-      ? "auto"
-      : String(paramValues.aspect_ratio),
-  );
+  // 比例选中状态：优先从已保存参数里恢复（存储格式是 prop_value_name）
+  const getInitialRatioKey = () => {
+    if (paramValues.aspect_ratio == null) return "auto";
+    return String(paramValues.aspect_ratio);
+  };
+  const [currentRatio, setCurrentRatio] = useState(getInitialRatioKey);
   // 调用 AI 生成接口
   const handleApiSubmit = async () => {
     if (!editor || !activeNodeId) return;
@@ -109,10 +113,7 @@ const BottomParamToolbar = ({
     propList.forEach((prop) => {
       const val = editor.data[prop.prop_str];
       if (val === undefined || val === null || val === "") return;
-      const matched = prop.prop_values_list?.find(
-        (item) => item.prop_value_id === val,
-      );
-      params[prop.prop_str] = matched ? matched.prop_value_name : val;
+      params[prop.prop_str] = val;
     });
 
     const nodeData = {
@@ -168,11 +169,10 @@ const BottomParamToolbar = ({
         Array.isArray(prop.prop_values_list) &&
         prop.prop_values_list.length > 0
       ) {
-        // 仅当节点 data 中没有该 prop 的值时才写入默认值，
-        // 防止覆盖从编辑器回填的旧值
+        // 仅当节点 data 中没有该 prop 的值时才写入默认值
         if (newData[prop.prop_str] === undefined) {
           const firstVal = prop.prop_values_list[0];
-          newData[prop.prop_str] = firstVal.prop_value_name;
+          newData[prop.prop_str] = firstVal.prop_value_id;
         }
       }
     });
@@ -256,7 +256,7 @@ const BottomParamToolbar = ({
           return {
             key: prop.prop_str,
             isAudioIcon: true,
-            iconNode: isOpen ? <NotificationOutlined /> : <SoundOutlined />,
+            iconNode: isOpen ? <SoundOutlined /> : <NotificationOutlined />,
           };
         }
 
@@ -272,34 +272,47 @@ const BottomParamToolbar = ({
 
   const paramSummary = getParamSummary();
 
-  const getConsumePoint = () => {
-    if (!currentSelectModel?.point_list || propList.length === 0) {
-      // console.log("[积分计算] 无模型/无积分配置/无参数", {
-      //   currentSelectModel,
-      //   propList,
-      // });
-      return 0;
+  // 用 ref 精确追踪参数值变化，只在真正变化时才重新计算积分
+  const lastParamStr = useRef("");
+  const lastModelId = useRef(null);
+  const consumePointRef = useRef(0);
+
+  const currentParamStr = JSON.stringify(paramValues);
+  const changed =
+    lastParamStr.current !== currentParamStr ||
+    lastModelId.current !== currentSelectModel?.id;
+
+  if (changed) {
+    lastParamStr.current = currentParamStr;
+    lastModelId.current = currentSelectModel?.id;
+
+    if (currentSelectModel?.point_list && propList.length > 0) {
+      const valueIds = [];
+      propList.forEach((prop) => {
+        const val = paramValues[prop.prop_str];
+        if (val === null || val === undefined || val === "") return;
+        valueIds.push(val);
+      });
+      if (valueIds.length > 0) {
+        const combineKey = valueIds
+          .sort((a, b) => Number(a) - Number(b))
+          .join(",");
+        consumePointRef.current =
+          currentSelectModel.point_list[combineKey] ?? 0;
+        // console.log("[积分计算日志]", {
+        //   所有选中valueId: valueIds,
+        //   拼接key: combineKey,
+        //   当前匹配积分: consumePointRef.current,
+        // });
+      } else {
+        consumePointRef.current = 0;
+      }
+    } else {
+      consumePointRef.current = 0;
     }
-    const valueIds = [];
-    propList.forEach((prop) => {
-      const val = paramValues[prop.prop_str];
-      // 值为空直接跳过
-      if (val === null || val === undefined || val === "") return;
-      // 所有参数存储的val本身就是prop_value_id，直接推入数组
-      valueIds.push(val);
-    });
-    // 数字升序拼接key
-    const combineKey = valueIds.sort((a, b) => Number(a) - Number(b)).join(",");
-    const point = currentSelectModel.point_list[combineKey] ?? 0;
-    // console.log("[积分计算日志] ", {
-    //   所有选中valueId: valueIds,
-    //   拼接key: combineKey,
-    //   point_list对照表: currentSelectModel.point_list,
-    //   当前匹配积分: point,
-    // });
-    return point;
-  };
-  const consumePoint = getConsumePoint();
+  }
+
+  const consumePoint = consumePointRef.current;
 
   // 预览小方框样式
   // 公式：height = 20px ÷ (宽比值 / 高比值)
@@ -353,21 +366,18 @@ const BottomParamToolbar = ({
     const currentVal = paramValues[prop_str];
 
     if (prop_str === "aspect_ratio" && prop_values_list.length) {
-      // 将后端 prop_values_list 映射到固定 RATIO_LIST
-      // 通过 label 匹配比例，确保预览图标与数据一致
+      // options 的 value 用 prop_value_id，存储和匹配都统一用 id
       const options = prop_values_list.map((item) => {
         const matchedRatio = RATIO_LIST.find(
-          (r) =>
-            r.label === item.prop_value_name || r.key === item.prop_value_id,
+          (r) => r.label === item.prop_value_name,
         );
         return {
           label: item.prop_value_name,
-          value: item.prop_value_name,
+          value: item.prop_value_id,
           ratio: matchedRatio?.ratio || null,
-          key: matchedRatio?.key || item.prop_value_name,
         };
       });
-
+      const currentId = paramValues[prop_str];
       return (
         <div style={{ marginBottom: "16px" }} key={prop_id}>
           <div
@@ -382,15 +392,12 @@ const BottomParamToolbar = ({
           {/* 比例选择网格：5 列布局 */}
           <div style={ratioGridStyle}>
             {options.map((opt) => {
-              // prop_value_id 后端可能是数字/字符串，RATIO_LIST.key 固定字符串；
-              // 统一 String 比较，避免严格相等导致选中态失效
-              const isSelected = String(currentRatio) === String(opt.key);
+              const isSelected = String(currentVal) === String(opt.value);
               return (
                 <div
                   key={opt.value}
                   style={getButtonStyle(isSelected)}
                   onClick={() => {
-                    setCurrentRatio(String(opt.key));
                     handleParamChange("aspect_ratio", opt.value);
                     // 关键：关闭再打开弹窗，强制重新计算定位
                     setPopoverOpen(false);
@@ -419,7 +426,7 @@ const BottomParamToolbar = ({
     if ([1, 2, 3].includes(prop_viewtype)) {
       const options = prop_values_list.map((item) => ({
         label: item.prop_value_name,
-        value: item.prop_value_name,
+        value: item.prop_value_id,
       }));
       return (
         <div style={{ marginBottom: "16px" }} key={prop_id}>
@@ -470,20 +477,16 @@ const BottomParamToolbar = ({
           </div>
           <Space>
             <Switch
-              checked={String(currentVal) === trueItem?.prop_value_name}
+              checked={String(currentVal) === trueItem?.prop_value_id}
               onChange={(checked) => {
                 handleParamChange(
                   prop.prop_str,
-                  checked
-                    ? trueItem.prop_value_name
-                    : falseItem.prop_value_name,
+                  checked ? trueItem.prop_value_id : falseItem.prop_value_id,
                 );
               }}
             />
             <span>
-              {String(currentVal) === trueItem?.prop_value_name
-                ? "开启"
-                : "关闭"}
+              {String(currentVal) === trueItem?.prop_value_id ? "开启" : "关闭"}
             </span>
           </Space>
         </div>
@@ -561,7 +564,7 @@ const BottomParamToolbar = ({
             }}
           >
             {/* 读取仓库全局选中模型展示文字 */}
-            {currentSelectModel?.model_title || "请选择模型"}
+            {currentSelectModel?.model_name || "请选择模型"}
           </Button>
         </Dropdown>
 

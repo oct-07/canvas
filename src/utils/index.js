@@ -4,6 +4,7 @@
 export * from "./canvasStorage";
 export * from "./common";
 export * from "./format";
+export * from "./promptText";
 export * from "./styleUtils";
 export * from "./thumbnail";
 export * from "./timeFormat";

@@ -310,37 +310,9 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
     };
   }, [visible, isFullScreen, nodeHeightOffset]);
 
-  // 提交生成
-  const handleSend = () => {
-    const aspectRatio = editor?.data?.aspect_ratio;
-    const updatedParams = aspectRatio
-      ? {
-          ...params,
-          width: getAspectRatioSize(aspectRatio).width,
-          height: getAspectRatioSize(aspectRatio).height,
-        }
-      : params;
-
-    // 直接从 DOM 读取最新的编辑器内容，避免 state 异步更新导致的数据滞后
-    const editorEl = document.getElementById(`prompt-editor-${activeNodeId}`);
-    const currentPrompt = editorEl ? editorEl.innerHTML : prompt;
-    console.log("[handleSend] currentPrompt =", currentPrompt);
-
-    const submitData = {
-      prompt: currentPrompt || undefined,
-      style: styleValue,
-      imageUrl: imageUrl || undefined,
-      params: updatedParams,
-      model,
-      sizeConfig,
-      preset,
-      cameraMode,
-      imageCount,
-      aspectRatio: aspectRatio || undefined,
-    };
-    onSubmit(submitData);
-    // 不再清空本地 state：editor.data 已通过 useEffect 回填到 setPrompt/setImageUrl
-  };
+  // 提示词输入区 ref，转发给 BottomParamToolbar；
+  // 它在「生成」时调用 getPromptText()，把原子块替换为「图片X / 视频X」纯文本后再下发
+  const promptInputRef = useRef(null);
 
   if (!visible) return null;
 
@@ -422,6 +394,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
           }}
         >
           <PromptInputArea
+            ref={promptInputRef}
             html={prompt}
             onChangeHtml={handlePromptChange}
             assetList={assetList}
@@ -447,7 +420,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
           onChangeImageCount={setImageCount}
           steps={params.steps}
           onChangeSteps={(val) => setParams({ ...params, steps: val })}
-          onSubmit={handleSend}
+          promptInputRef={promptInputRef}
           activeFrameKey={activeFrameKey}
         />
       </div>

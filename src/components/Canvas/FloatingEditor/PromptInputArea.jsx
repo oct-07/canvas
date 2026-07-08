@@ -1,6 +1,7 @@
 import { Dropdown } from "antd";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import styles from "./PromptInputArea.module.css";
+import { buildPurePromptText } from "@/utils/promptText";
 
 /**
  * 生成唯一的素材引用ID
@@ -44,14 +45,17 @@ export const parseAssetIdsFromHtml = (html) => {
 // 默认素材列表（仅用于静态展示，实际数据从父组件传入）
 const defaultAssetList = [];
 
-const PromptInputArea = ({
-  html = "",
-  onChangeHtml = () => {},
-  assetList = defaultAssetList,
-  onChangeAssetList = () => {}, // 素材列表变化回调，用于通知父组件更新 refAssetList
-  isFullScreen = false,
-  editorId,
-}) => {
+const PromptInputArea = forwardRef(function PromptInputArea(
+  {
+    html = "",
+    onChangeHtml = () => {},
+    assetList = defaultAssetList,
+    onChangeAssetList = () => {}, // 素材列表变化回调，用于通知父组件更新 refAssetList
+    isFullScreen = false,
+    editorId,
+  },
+  ref,
+) {
   // DOM容器
   const editorRef = useRef(null); // 内层富文本contenteditable
   const promptEditorRef = useRef(null); // 通过稳定选择器追踪提示词编辑器DOM
@@ -160,6 +164,31 @@ const PromptInputArea = ({
   const getCurrentAssetList = useCallback(() => {
     return localAssetList;
   }, [localAssetList]);
+
+  // ==================== 工具：把编辑器 DOM 里的原子块替换为「图片X / 视频X」纯文本 ====================
+  // 直接克隆当前真实 DOM 解析，避免污染正在编辑的富文本；不修改 DOM 也不触发 onChangeHtml。
+  const buildPromptText = useCallback(() => {
+    const editor = promptEditorRef.current || editorRef.current;
+    if (!editor) return "";
+
+    // 委托 utils/promptText：从真实 DOM 克隆 → 把原子块替换为「图片X / 视频X」 → 取出纯文本
+    const { text } = buildPurePromptText(editor, {
+      assetList: localAssetList,
+      isVideo: isVideoItem,
+      getSeq: (assetId) => assetIdToSeqRef.current.get(assetId),
+    });
+    return text;
+  }, [localAssetList]);
+
+  // ==================== 暴露给父组件的指令式方法 ====================
+  useImperativeHandle(
+    ref,
+    () => ({
+      // 返回把原子块替换为「图片X / 视频X」的纯文本 prompt，不再带 HTML 结构
+      getPromptText: () => buildPromptText(),
+    }),
+    [buildPromptText],
+  );
 
   // ==================== 工具：清理空白文本节点，避免隐形撑高 ====================
   const cleanEmptyTextNodes = useCallback((rootEl) => {
@@ -357,7 +386,6 @@ const PromptInputArea = ({
       lockSyncRef.current = true;
       isLocalModifyRef.current = true;
       const newHtml = editor.innerHTML;
-      console.log("[insertAssetTag] newHtml =", newHtml);
       lastSyncedHtmlRef.current = newHtml;
       onChangeHtml(newHtml);
 
@@ -719,6 +747,7 @@ const PromptInputArea = ({
       </div>
     </div>
   );
-};
+
+});
 
 export default PromptInputArea;

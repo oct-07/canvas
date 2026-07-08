@@ -51,7 +51,7 @@ const BottomParamToolbar = ({
   onChangeImageCount,
   steps,
   onChangeSteps,
-  onSubmit,
+  promptInputRef,
   activeFrameKey,
 }) => {
   //弹框气泡
@@ -119,6 +119,11 @@ const BottomParamToolbar = ({
       params[prop.prop_str] = val;
     });
 
+    // 走 ref：让 PromptInputArea 从真实 DOM 解析，把原子块替换为「图片1 / 视频1」纯文本
+    // 优先用 ref 拿到的纯文本；若 ref 不可用，再退回 store 的原值
+    const storePrompt = editor.data.prompt || "";
+    const finalPrompt = promptInputRef?.current?.getPromptText?.() || storePrompt;
+
     const nodeData = {
       nodeType,
       params,
@@ -127,7 +132,7 @@ const BottomParamToolbar = ({
       provider: currentSelectModel?.model_company ?? "",
       model_name: currentSelectModel?.model_name ?? "",
       model_id: editor.data.model_id || "",
-      prompt: editor.data.prompt || "",
+      prompt: finalPrompt,
       negative_prompt: "",
       team_id: editor.data.team_id || "",
       vip_weight: editor.data.vip_weight || "",

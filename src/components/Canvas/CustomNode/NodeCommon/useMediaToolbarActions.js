@@ -1,6 +1,6 @@
-import { dowloadMedia } from "@/api";
 import useCanvasStore from "@/store/canvasStore";
 import { message } from "antd";
+import { useState } from "react";
 
 /**
  * 媒体节点通用工具栏动作：裁剪 / 旋转 / 下载 / 全屏
@@ -14,6 +14,8 @@ import { message } from "antd";
  */
 export const useMediaToolbarActions = ({ id, data, mediaType }) => {
   const updateNodeData = useCanvasStore((s) => s.updateNodeData);
+  // 下载loading 用于按钮转圈
+  const [downloadLoading, setDownloadLoading] = useState(false);
 
   /**
    * 阻止冒泡防止误触发节点拖拽、阻止默认行为防止触发文件 input 等副作用。
@@ -49,26 +51,52 @@ export const useMediaToolbarActions = ({ id, data, mediaType }) => {
    */
   const handleDownload = async (e) => {
     stopNodeEvent(e);
+    // 正在下载中直接拦截重复点击
+    if (downloadLoading) return;
+
     if (!data.fullurl) {
       message.warning("暂无素材可下载");
       return;
     }
+
+    const urlParts = data.fullurl.split("/").pop().split(".");
+    const ext = urlParts[urlParts.length - 1];
+
+    const fullFileName = data.name
+      ? `${data.name}.${ext}`
+      : data.fullurl.split("/").pop();
+
+    const api = `${import.meta.env.VITE_API_BASE_URL}/index/index/imageDownload?url=${encodeURIComponent(data.fullurl)}&filename=${encodeURIComponent(fullFileName)}`;
+
+    // 开启loading + 弹出下载中提示
+    setDownloadLoading(true);
+    const downloadMsg = message.loading("文件正在下载中...", 0);
+
     try {
-      const res = await dowloadMedia({
-        url: data.fullurl,
-        file_name: data.name || mediaType || "media",
+      const resp = await fetch(api, {
+        headers: {
+          token: "b4e735d8-9540-412c-b4fd-46704f31d108",
+          TeamId: 3,
+        },
       });
-      const blob = new Blob([res.data], { type: res.data.type });
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = blobUrl;
-      link.download = data.name || mediaType || "media";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(blobUrl);
+      const blob = await resp.blob();
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = fullFileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+
+      downloadMsg();
+      message.success("文件下载完成");
     } catch (err) {
-      console.error("下载失败", err);
+      console.error(err);
+      downloadMsg();
+      message.error("下载失败，请稍后重试");
+    } finally {
+      // 无论成功失败都关闭按钮loading
+      setDownloadLoading(false);
     }
   };
 
@@ -90,6 +118,7 @@ export const useMediaToolbarActions = ({ id, data, mediaType }) => {
     handleDownload,
     handleFullscreen,
     stopNodeEvent,
+    downloadLoading, // 抛出loading给组件控制图标旋转
   };
 };
 

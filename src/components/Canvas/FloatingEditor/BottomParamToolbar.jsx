@@ -200,6 +200,61 @@ const BottomParamToolbar = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [modelList.length]);
 
+  // 积分计算相关状态
+  const consumePointRef = useRef(0);
+  const lastCalcKeyRef = useRef(""); // 存储上一次的 combineKey，用于判断是否真正变化
+
+  // 积分计算函数
+  const calculatePoint = () => {
+    if (!currentSelectModel?.point_list || propList.length === 0) {
+      return { key: "", point: 0 };
+    }
+
+    const valueIds = [];
+    propList.forEach((prop) => {
+      const val = paramValues[prop.prop_str];
+      if (val === null || val === undefined || val === "") return;
+      valueIds.push(val);
+    });
+
+    if (valueIds.length === 0) {
+      return { key: "", point: 0 };
+    }
+
+    // 使用安全的数字排序，优先按数字排序，非数字值按字符串排序
+    const sortedValueIds = [...valueIds].sort((a, b) => {
+      const numA = Number(a);
+      const numB = Number(b);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return String(a).localeCompare(String(b));
+    });
+    const combineKey = sortedValueIds.join(",");
+    const point = currentSelectModel.point_list[combineKey] ?? 0;
+
+    return { key: combineKey, point, valueIds };
+  };
+
+  // 使用 useEffect 监听参数和模型变化，确保在 React 重新渲染后再计算
+  // 这样可以避免闭包捕获旧值的问题
+  useEffect(() => {
+    const { key, point, valueIds } = calculatePoint();
+
+    // 只有 combineKey 真正变化时才更新并打印日志
+    if (lastCalcKeyRef.current !== key) {
+      lastCalcKeyRef.current = key;
+      consumePointRef.current = point;
+      console.log("[积分计算日志]", {
+        所有选中valueId: valueIds,
+        排序后key: key,
+        当前匹配积分: point,
+      });
+    }
+  }, [activeNodeId, currentSelectModel?.id, JSON.stringify(paramValues)]);
+
+  const consumePoint = consumePointRef.current;
+
   // 参数修改回调
   const handleParamChange = (propKey, value) => {
     if (!editor || !activeNodeId) return;
@@ -215,6 +270,7 @@ const BottomParamToolbar = ({
       const height = 260;
       updateNodeData(activeNodeId, { aspect_ratio: value, width, height });
     }
+    // 积分计算由 useEffect 自动处理，无需手动调用
   };
 
   // 生成参数摘要：每个参数用 span 展示
@@ -279,48 +335,6 @@ const BottomParamToolbar = ({
   };
 
   const paramSummary = getParamSummary();
-
-  // 用 ref 精确追踪参数值变化，只在真正变化时才重新计算积分
-  const lastParamStr = useRef("");
-  const lastModelId = useRef(null);
-  const consumePointRef = useRef(0);
-
-  const currentParamStr = JSON.stringify(paramValues);
-  const changed =
-    lastParamStr.current !== currentParamStr ||
-    lastModelId.current !== currentSelectModel?.id;
-
-  if (changed) {
-    lastParamStr.current = currentParamStr;
-    lastModelId.current = currentSelectModel?.id;
-
-    if (currentSelectModel?.point_list && propList.length > 0) {
-      const valueIds = [];
-      propList.forEach((prop) => {
-        const val = paramValues[prop.prop_str];
-        if (val === null || val === undefined || val === "") return;
-        valueIds.push(val);
-      });
-      if (valueIds.length > 0) {
-        const combineKey = valueIds
-          .sort((a, b) => Number(a) - Number(b))
-          .join(",");
-        consumePointRef.current =
-          currentSelectModel.point_list[combineKey] ?? 0;
-        console.log("[积分计算日志]", {
-          所有选中valueId: valueIds,
-          拼接key: combineKey,
-          当前匹配积分: consumePointRef.current,
-        });
-      } else {
-        consumePointRef.current = 0;
-      }
-    } else {
-      consumePointRef.current = 0;
-    }
-  }
-
-  const consumePoint = consumePointRef.current;
 
   // 预览小方框样式
   // 公式：height = 20px ÷ (宽比值 / 高比值)
@@ -535,6 +549,7 @@ const BottomParamToolbar = ({
         model_frame: item.model_frame,
       };
       updateNodeEditorData(activeNodeId, newEditorData);
+      // 积分计算由 useEffect 自动处理，无需手动调用
     },
   }));
 

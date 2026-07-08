@@ -151,6 +151,8 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const saveTimerRef = useRef(null);
   // 累积待写入的 updates，避免多个 syncToNodeData 调用相互覆盖
   const pendingUpdatesRef = useRef({});
+  // 追踪前一个 activeNodeId，用于在切换时保存旧节点数据
+  const prevActiveNodeIdRef = useRef(null);
 
   // 同步数据到 node.data（防抖，合并多次调用）
   const syncToNodeData = useCallback(
@@ -167,10 +169,11 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
 
       // 设置新的定时器，300ms 后合并写入
       saveTimerRef.current = setTimeout(() => {
-        console.log("[3] 300ms 防抖到期，真正写入 store, updates =", pendingUpdatesRef.current);
+        const currentNodeId = activeNodeId;
+        console.log("[3] 300ms 防抖到期，真正写入 store, nodeId =", currentNodeId, "updates =", pendingUpdatesRef.current);
         // 同时更新 nodes 和 nodeEditors
-        updateNodeData(activeNodeId, pendingUpdatesRef.current);
-        setNodeEditorData(activeNodeId, pendingUpdatesRef.current);
+        updateNodeData(currentNodeId, pendingUpdatesRef.current);
+        setNodeEditorData(currentNodeId, pendingUpdatesRef.current);
         saveTimerRef.current = null;
         pendingUpdatesRef.current = {};
       }, 300);
@@ -223,7 +226,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
     [syncToNodeData],
   );
 
-  // 组件卸载时清理定时器
+  // 组件卸载或 activeNodeId 变化时清理定时器和待写入数据
   useEffect(() => {
     return () => {
       if (saveTimerRef.current) {
@@ -231,6 +234,32 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       }
     };
   }, []);
+
+  // 节点切换时，立即保存旧节点的待写入数据到 store
+  useEffect(() => {
+    const prevNodeId = prevActiveNodeIdRef.current;
+    const currentNodeId = activeNodeId;
+
+    // 只有在真正切换节点时才处理
+    if (prevNodeId && currentNodeId && prevNodeId !== currentNodeId) {
+      // 如果有未保存的数据，立即写入旧节点
+      if (Object.keys(pendingUpdatesRef.current).length > 0) {
+        console.log("[节点切换] 立即保存旧节点数据:", prevNodeId, pendingUpdatesRef.current);
+        updateNodeData(prevNodeId, pendingUpdatesRef.current);
+        setNodeEditorData(prevNodeId, pendingUpdatesRef.current);
+      }
+      // 清除定时器
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = null;
+      }
+      // 清空待写入数据
+      pendingUpdatesRef.current = {};
+    }
+
+    // 更新前一个节点 ID
+    prevActiveNodeIdRef.current = currentNodeId;
+  }, [activeNodeId, updateNodeData, setNodeEditorData]);
 
   // 编辑数据回填（仅在 activeNodeId 变化时执行）
   useEffect(() => {
@@ -245,8 +274,9 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
     if (activeNodeId) {
       setNodeEditorData(activeNodeId, {
         ...nodeData,
-        // 确保 aspect_ratio 有值，否则 nodeHeightOffset 计算会有问题
-        aspect_ratio: nodeData.aspect_ratio || "1:1",
+        // 确保 aspect_ratio 有值（必须用 prop_value_id，不能用 prop_value_name）
+        // 默认使用 id="227" 对应的 "1:1" 比例
+        aspect_ratio: nodeData.aspect_ratio || "227",
       });
     }
   }, [activeNodeId, currentNode, setNodeEditorData]);
@@ -394,6 +424,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
           }}
         >
           <PromptInputArea
+            key={activeNodeId} // 确保节点切换时重新挂载，清空 DOM 内容
             ref={promptInputRef}
             html={prompt}
             onChangeHtml={handlePromptChange}

@@ -23,10 +23,10 @@ const isVideoItem = (item) => {
 };
 
 /**
- * 根据素材类型返回 @ 引用前缀
- * 视频素材显示 @视频N，图片素材显示 @图N
+ * 根据素材类型返回引用前缀
+ * 视频素材显示「视频」，图片素材显示「图片」
  */
-const getAssetRefPrefix = (item) => (isVideoItem(item) ? "@视频" : "@图");
+const getAssetRefPrefix = (item) => (isVideoItem(item) ? "视频" : "图片");
 
 /**
  * 从HTML中解析出所有素材引用的assetId列表
@@ -50,6 +50,7 @@ const PromptInputArea = ({
   assetList = defaultAssetList,
   onChangeAssetList = () => {}, // 素材列表变化回调，用于通知父组件更新 refAssetList
   isFullScreen = false,
+  editorId,
 }) => {
   // DOM容器
   const editorRef = useRef(null); // 内层富文本contenteditable
@@ -356,6 +357,7 @@ const PromptInputArea = ({
       lockSyncRef.current = true;
       isLocalModifyRef.current = true;
       const newHtml = editor.innerHTML;
+      console.log("[insertAssetTag] newHtml =", newHtml);
       lastSyncedHtmlRef.current = newHtml;
       onChangeHtml(newHtml);
 
@@ -702,7 +704,7 @@ const PromptInputArea = ({
         {/* 内层富文本渲染层，不携带滚动限制 */}
         <div
           ref={editorRef}
-          id="zyg-prompt-editor"
+          id={editorId}
           className={`${styles.contentEditor} nodrag nopan`}
           contentEditable="true"
           data-placeholder="描述你想要生成的画面内容, @引用素材"

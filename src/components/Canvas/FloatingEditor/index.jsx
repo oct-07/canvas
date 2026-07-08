@@ -15,6 +15,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
   const nodes = useCanvasStore((state) => state.nodes);
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
+  const setNodeEditorData = useCanvasStore((state) => state.setNodeEditorData);
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
 
   // 获取当前节点的完整数据（从 store 中的 nodes 读取，用于重建上游媒体）
@@ -78,7 +79,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
       );
 
       // 2. 直接基于真实编辑器 DOM 清理原子块，避免 prompt state 与 DOM 脱节
-      const editorEl = document.getElementById("zyg-prompt-editor");
+      const editorEl = document.getElementById(`prompt-editor-${activeNodeId}`);
       console.log(
         "[remove-media] editorEl=",
         !!editorEl,
@@ -148,33 +149,57 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
 
   // 防抖保存定时器
   const saveTimerRef = useRef(null);
+  // 累积待写入的 updates，避免多个 syncToNodeData 调用相互覆盖
+  const pendingUpdatesRef = useRef({});
 
-  // 同步数据到 node.data（防抖）
+  // 同步数据到 node.data（防抖，合并多次调用）
   const syncToNodeData = useCallback(
     (updates) => {
       if (!activeNodeId) return;
+
+      // 合并新的 updates 到待写入队列
+      pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates };
 
       // 清除之前的定时器
       if (saveTimerRef.current) {
         clearTimeout(saveTimerRef.current);
       }
 
-      // 设置新的定时器，300ms 后保存
+      // 设置新的定时器，300ms 后合并写入
       saveTimerRef.current = setTimeout(() => {
-        console.log("[3] 300ms 防抖到期，真正写入 store, updates =", updates);
-        updateNodeData(activeNodeId, updates);
+        console.log("[3] 300ms 防抖到期，真正写入 store, updates =", pendingUpdatesRef.current);
+        // 同时更新 nodes 和 nodeEditors
+        updateNodeData(activeNodeId, pendingUpdatesRef.current);
+        setNodeEditorData(activeNodeId, pendingUpdatesRef.current);
         saveTimerRef.current = null;
+        pendingUpdatesRef.current = {};
       }, 300);
     },
-    [activeNodeId, updateNodeData],
+    [activeNodeId, updateNodeData, setNodeEditorData],
   );
+
+  // 立即同步 pending updates 到 store（用于点击发送时强制刷新）
+  const flushSyncToNodeData = useCallback(() => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+    if (Object.keys(pendingUpdatesRef.current).length > 0) {
+      console.log("[flushSyncToNodeData] 强制同步, pendingUpdatesRef =", pendingUpdatesRef.current);
+      updateNodeData(activeNodeId, pendingUpdatesRef.current);
+      setNodeEditorData(activeNodeId, pendingUpdatesRef.current);
+      pendingUpdatesRef.current = {};
+    }
+  }, [activeNodeId, updateNodeData, setNodeEditorData]);
 
   // prompt 变化时同步到 node.data
   const handlePromptChange = useCallback(
     (newHtml) => {
       console.log("[2] handlePromptChange 收到 newHtml =", newHtml);
       setPrompt(newHtml);
+      console.log("[2] handlePromptChange 调用 syncToNodeData, pendingUpdatesRef =", pendingUpdatesRef.current);
       syncToNodeData({ prompt: newHtml });
+      console.log("[2] handlePromptChange 调用后 pendingUpdatesRef =", pendingUpdatesRef.current);
     },
     [syncToNodeData],
   );
@@ -216,7 +241,15 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
     setStyleValue(nodeData.style ?? "default");
     setImageUrl(nodeData.imageUrl ?? "");
     setParams(nodeData.params ?? params);
-  }, [activeNodeId, currentNode]);
+    // 同步回填到 editor.data，确保 BottomParamToolbar 等组件能读取到正确数据
+    if (activeNodeId) {
+      setNodeEditorData(activeNodeId, {
+        ...nodeData,
+        // 确保 aspect_ratio 有值，否则 nodeHeightOffset 计算会有问题
+        aspect_ratio: nodeData.aspect_ratio || "1:1",
+      });
+    }
+  }, [activeNodeId, currentNode, setNodeEditorData]);
 
   // 让提示词框随节点高度变化同步位移，始终与节点底边保持默认间距，避免重叠或间距忽大忽小。
   // 图片/视频节点默认宽度均为 260，默认比例 1:1 → 默认高度 260。
@@ -288,8 +321,13 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
         }
       : params;
 
+    // 直接从 DOM 读取最新的编辑器内容，避免 state 异步更新导致的数据滞后
+    const editorEl = document.getElementById(`prompt-editor-${activeNodeId}`);
+    const currentPrompt = editorEl ? editorEl.innerHTML : prompt;
+    console.log("[handleSend] currentPrompt =", currentPrompt);
+
     const submitData = {
-      prompt: prompt || undefined,
+      prompt: currentPrompt || undefined,
       style: styleValue,
       imageUrl: imageUrl || undefined,
       params: updatedParams,
@@ -389,6 +427,7 @@ const FloatingEditor = ({ visible, position, onSubmit, onClose, nodeType }) => {
             assetList={assetList}
             onChangeAssetList={handleAssetListChange}
             isFullScreen={isFullScreen}
+            editorId={`prompt-editor-${activeNodeId}`}
           />
         </div>
 

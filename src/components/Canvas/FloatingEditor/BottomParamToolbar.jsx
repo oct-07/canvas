@@ -62,6 +62,7 @@ const BottomParamToolbar = ({
 
   // 节点编辑相关
   const activeNodeId = useCanvasStore((state) => state.activeNodeId);
+  const nodes = useCanvasStore((state) => state.nodes);
   const nodeEditors = useCanvasStore((state) => state.nodeEditors);
   const updateNodeEditorData = useCanvasStore(
     (state) => state.setNodeEditorData,
@@ -69,8 +70,10 @@ const BottomParamToolbar = ({
   const updateNodeData = useCanvasStore((state) => state.updateNodeData);
   const registerTask = useCanvasStore((state) => state.registerTask);
 
+  const currentNode = nodes.find((n) => n.id === activeNodeId);
   const editor = activeNodeId ? nodeEditors[activeNodeId] : null;
-  const paramValues = editor?.data || {};
+  // editor.data 可能还没回填，fallback 到 nodes 中的数据
+  const paramValues = editor?.data || currentNode?.data || {};
 
   // 用 ref 跟踪参数值变化，只在真正变化时触发积分计算
   const paramValuesRef = useRef(null);
@@ -299,11 +302,11 @@ const BottomParamToolbar = ({
           .join(",");
         consumePointRef.current =
           currentSelectModel.point_list[combineKey] ?? 0;
-        // console.log("[积分计算日志]", {
-        //   所有选中valueId: valueIds,
-        //   拼接key: combineKey,
-        //   当前匹配积分: consumePointRef.current,
-        // });
+        console.log("[积分计算日志]", {
+          所有选中valueId: valueIds,
+          拼接key: combineKey,
+          当前匹配积分: consumePointRef.current,
+        });
       } else {
         consumePointRef.current = 0;
       }

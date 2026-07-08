@@ -139,11 +139,19 @@ export const createUISlice = (getStore, setStore) => ({
   setNodeEditorData: (nodeId, data) => {
     setStore((state) => {
       const current = state.nodeEditors[nodeId];
-      if (!current) return state;
+      if (!current) {
+        // 如果节点不存在于 nodeEditors，先创建一个空条目
+        return {
+          nodeEditors: {
+            ...state.nodeEditors,
+            [nodeId]: { nodeId, data: { ...data } },
+          },
+        };
+      }
       return {
         nodeEditors: {
           ...state.nodeEditors,
-          [nodeId]: { ...current, data },
+          [nodeId]: { ...current, data: { ...(current.data || {}), ...data } },
         },
       };
     });

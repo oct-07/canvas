@@ -169,6 +169,8 @@ const SelectionGroup = () => {
     (e, handleScreenPos) => {
       e.stopPropagation();
       e.preventDefault();
+      // 阻止 ReactFlow 挂在 pane 上的原生 D3 拖拽/框选监听接管此次按下
+      e.nativeEvent?.stopImmediatePropagation?.();
       dragStartRef.current = { sourceIds: [...activeGroupNodeIds] };
       setDragPreview({
         start: handleScreenPos,
@@ -241,6 +243,7 @@ const SelectionGroup = () => {
 
         {/* 组名标签：选框左上角外侧，反向缩放保持恒定尺寸，可点击编辑 */}
         <div
+          className="nopan nodrag nowheel"
           style={{
             position: "absolute",
             transform: `translate(${boxX}px, ${boxY}px) scale(${inv})`,
@@ -308,7 +311,8 @@ const SelectionGroup = () => {
 
         {/* 组 Handle：选框右侧居中的圆形连接点，反向缩放保持恒定尺寸 */}
         <div
-          onPointerDown={(e) => {
+          className="nopan nodrag nowheel"
+          onPointerDownCapture={(e) => {
             const screenPos = flowToScreenPosition({
               x: handleFlowX,
               y: handleFlowY,
@@ -332,7 +336,7 @@ const SelectionGroup = () => {
             justifyContent: "center",
             cursor: "crosshair",
             pointerEvents: "all",
-            zIndex: 6,
+            zIndex: 1001,
           }}
           title="拖动以连接组内所有节点"
         >

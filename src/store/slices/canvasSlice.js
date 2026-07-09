@@ -169,6 +169,7 @@ export const createCanvasSlice = (getStore, setStore) => ({
       nodes: state.nodes,
       edges: state.edges,
       viewport: state.viewport,
+      groups: state.groups,
     });
   },
 
@@ -190,6 +191,7 @@ export const createCanvasSlice = (getStore, setStore) => ({
         viewport: data.viewport || { x: 0, y: 0, zoom: 1 },
         canvasName: data.canvasName || "未命名画布",
         globalStyle: data.globalStyle || "",
+        groups: data.groups || {},
       });
       // 同步更新 styleStore
       if (data.globalStyle) {

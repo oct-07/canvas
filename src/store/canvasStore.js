@@ -171,6 +171,11 @@ const useCanvasStore = create((set, get) => {
   return store;
 });
 
+// [v0-debug] 临时暴露 store 便于浏览器端自动化测试，验证后移除
+if (typeof window !== "undefined") {
+  window.__canvasStore = useCanvasStore;
+}
+
 // ===================== 页面离开保存 =====================
 // 页面关闭/刷新前触发保存
 const handleBeforeUnload = (e) => {
@@ -192,7 +197,7 @@ const handleBeforeUnload = (e) => {
 
   // 尝试同步保存到本地（localStorage 是同步的）
   const canvasId = state.canvasId;
-  const { canvasName, globalStyle, nodes, edges, viewport } = state;
+  const { canvasName, globalStyle, nodes, edges, viewport, groups } = state;
   canvasStorage.save({
     canvasId,
     canvasName,
@@ -200,6 +205,7 @@ const handleBeforeUnload = (e) => {
     nodes,
     edges,
     viewport,
+    groups,
   });
 };
 

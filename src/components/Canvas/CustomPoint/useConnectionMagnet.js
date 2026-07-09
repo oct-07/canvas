@@ -11,6 +11,7 @@ import { useReactFlow } from "@xyflow/react";
 import { useCallback, useEffect, useRef } from "react";
 
 import useCanvasStore, { validateConnection } from "@/store/canvasStore";
+import { resolveAssetMediaType } from "@/utils/modelAssetLimit";
 import { findBestConnectionTarget } from "./magnet";
 import useMagnetStore from "./useMagnetStore";
 
@@ -139,7 +140,7 @@ export const useConnectionMagnet = () => {
       if (isMediaNode && sourceNode?.data) {
         const mediaAsset = {
           id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          type: sourceNode.type,
+          type: resolveAssetMediaType(sourceNode),
           url: sourceNode.data.url || "",
           name: sourceNode.data.name || "",
           sourceNodeId: source,

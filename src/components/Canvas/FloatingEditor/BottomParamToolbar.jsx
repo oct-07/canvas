@@ -3,6 +3,7 @@ import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import useCanvasStore from "@/store/canvasStore";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { buildMediaBody } from "@/utils/generateParams.js";
+import { validateAssetLimits } from "@/utils/modelAssetLimit";
 import {
   getParamChineseName,
   getParamValueChinese,
@@ -107,6 +108,38 @@ const BottomParamToolbar = ({
     if (!editor || !activeNodeId) return;
 
     if (isGenerating) return;
+
+    // 素材数量上限校验：按 model_type 分支读取最大图片/视频数量，超限直接拦截
+    const refAssetList = editor.data.refAssetList || [];
+    console.log("[素材数量校验-debug] editor.data 原始结构:", editor.data);
+    console.log(
+      "[素材数量校验-debug] refAssetList 原始值:",
+      refAssetList,
+      "长度:",
+      refAssetList.length,
+      "逐项 type:",
+      refAssetList.map((a) => ({ type: a?.type, mime: a?.mime, url: a?.url }))
+    );
+    const limitResult = validateAssetLimits({
+      modelType: editor.data.model_type,
+      model: rawModel,
+      refAssetList,
+    });
+    console.log("[素材数量校验]", {
+      modelName: rawModel?.model_name,
+      modelType: editor.data.model_type,
+      imageCount: limitResult.imageCount,
+      videoCount: limitResult.videoCount,
+      maxImage: limitResult.maxImage,
+      maxVideo: limitResult.maxVideo,
+      passed: limitResult.passed,
+      message: limitResult.message || "",
+    });
+    if (!limitResult.passed) {
+      message.warning(limitResult.message);
+      return;
+    }
+
     const params = {};
     propList.forEach((prop) => {
       const val = editor.data[prop.propKey];

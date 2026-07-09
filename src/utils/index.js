@@ -5,6 +5,7 @@ export * from "./canvasStorage";
 export * from "./common";
 export * from "./format";
 export * from "./modelAdapter";
+export * from "./modelAssetLimit";
 export * from "./promptText";
 export * from "./styleUtils";
 export * from "./thumbnail";

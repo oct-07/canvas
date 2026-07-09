@@ -9,6 +9,7 @@ import "@xyflow/react/dist/style.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import useCanvasStore, { validateConnection } from "@/store/canvasStore";
+import { resolveAssetMediaType } from "@/utils/modelAssetLimit";
 import CanvasHeader from "./CanvasHeader";
 import ContextMenu from "./ContextMenu";
 import CustomEdge from "./CustomEdge";
@@ -225,7 +226,7 @@ const CanvasContent = () => {
       if (isMediaNode && sourceNode?.data) {
         const mediaAsset = {
           id: `asset_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          type: sourceNode.type,
+          type: resolveAssetMediaType(sourceNode),
           url: sourceNode.data.url || "",
           name: sourceNode.data.name || "",
           sourceNodeId: source,

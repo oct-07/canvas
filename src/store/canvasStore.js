@@ -171,11 +171,6 @@ const useCanvasStore = create((set, get) => {
   return store;
 });
 
-// [v0-debug] 临时暴露 store 便于浏览器端自动化测试，验证后移除
-if (typeof window !== "undefined") {
-  window.__canvasStore = useCanvasStore;
-}
-
 // ===================== 页面离开保存 =====================
 // 页面关闭/刷新前触发保存
 const handleBeforeUnload = (e) => {

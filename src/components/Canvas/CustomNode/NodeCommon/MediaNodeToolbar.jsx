@@ -45,7 +45,6 @@ const MediaNodeToolbar = memo(
     return (
       <NodeToolbar
         nodeId={id}
-        isSelected={showToolbar}
         position={Position.Top}
         offset={10}
         // 显隐淡入淡出，与画布暗色风格统一

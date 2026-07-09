@@ -26,7 +26,13 @@ const SAMPLE = 128; // 采样点数量（沿线等弧长采样，用于最近距
  * 因此 ReactFlow 给出的 sourceX/targetX 会落在节点边缘之外，造成连线与节点之间的间隙。
  * 这里改用 Handle 包围盒中心重算端点，使连线精准贴合节点边缘（不修改 Point 组件本身）。
  */
-function getEdgeAnchor(internalNode, handleType, handleId, fallbackX, fallbackY) {
+function getEdgeAnchor(
+  internalNode,
+  handleType,
+  handleId,
+  fallbackX,
+  fallbackY,
+) {
   const bounds = internalNode?.internals?.handleBounds;
   const list = handleType === "source" ? bounds?.source : bounds?.target;
   if (!list || list.length === 0) return { x: fallbackX, y: fallbackY };
@@ -166,10 +172,7 @@ export default function CustomEdge({
         }
         const t = Math.max(
           0,
-          Math.min(
-            1,
-            ((fx - a.x) * vx + (fy - a.y) * vy) / segLen2,
-          ),
+          Math.min(1, ((fx - a.x) * vx + (fy - a.y) * vy) / segLen2),
         );
         const px = a.x + vx * t;
         const py = a.y + vy * t;
@@ -305,11 +308,14 @@ export default function CustomEdge({
         path={edgePath}
         interactionWidth={0}
         style={
-          isActive && !animated
-            ? { stroke: "#666666", strokeWidth: STROKE_WIDTH, pointerEvents: "none" }
+          isActive
+            ? {
+                stroke: "#666666",
+                strokeWidth: STROKE_WIDTH,
+                pointerEvents: "none",
+              }
             : { strokeWidth: STROKE_WIDTH, pointerEvents: "none" }
         }
-        animated={animated}
       />
 
       {/* 透明加宽交互路径：命中范围 = 线条 ±HIT_EXTEND flow 单位（屏容差 ≈

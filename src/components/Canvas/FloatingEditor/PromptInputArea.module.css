@@ -91,7 +91,7 @@
 /* @唤起素材弹窗 */
 .mentionPopover {
   position: absolute;
-  width: 260px;
+  min-width: 260px;
   max-height: 320px;
   overflow-y: auto;
   background: #27272a;
@@ -116,7 +116,8 @@
 
 .mentionItemActive {
   background: #3f3f46;
-  outline: 1px solid #1890ff;
+  outline: 1px solid #242424;
+  gap: 5px;
 }
 
 .itemLeft {

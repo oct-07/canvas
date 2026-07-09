@@ -10,6 +10,7 @@ import {
   createClipboardSlice,
 } from "./slices/clipboardSlice";
 import { createEdgesSlice, edgesInitialState } from "./slices/edgesSlice";
+import { createGroupSlice, groupInitialState } from "./slices/groupSlice";
 import { createHistorySlice, historyInitialState } from "./slices/historySlice";
 import {
   createMaterialsSlice,
@@ -33,6 +34,7 @@ const initialState = {
   ...materialsInitialState,
   ...canvasInitialState,
   ...wsInitialState,
+  ...groupInitialState,
 
   // ========== 模型相关状态 ==========
   modelListMap: {},         // 按 model_type 分缓存：{ '1': [...], '2': [...] }
@@ -69,6 +71,9 @@ const useCanvasStore = create((set, get) => {
         selectedNodeId: null,
         selectedEdgeId: null,
         hoverDeleteEdgeId: null,
+        // 同步清除激活组叠加层
+        activeSignature: null,
+        activeGroupNodeIds: [],
         nodes: state.nodes.map((n) => ({ ...n, selected: false })),
         edges: state.edges.map((e) => ({ ...e, animated: false })),
       })),
@@ -153,6 +158,8 @@ const useCanvasStore = create((set, get) => {
     ...createMaterialsSlice(getStore, setStore),
     //画布底层
     ...createCanvasSlice(getStore, setStore),
+    //选区打组
+    ...createGroupSlice(getStore, setStore),
     //WS 任务分发（依赖 nodesSlice 的 updateNodeData，写回节点 data）
     ...createWsSlice(
       setStore,

@@ -18,6 +18,7 @@ const saveToLocalStorage = (getState) => {
     nodes: state.nodes,
     edges: state.edges,
     viewport: state.viewport,
+    groups: state.groups,
   });
 
   // 触发远程防抖保存

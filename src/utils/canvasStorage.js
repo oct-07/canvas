@@ -108,7 +108,7 @@ export const canvasStorage = {
    * @param {Array} options.edges - 边列表
    * @param {Object} [options.viewport] - 视口信息
    */
-  save: ({ canvasId, canvasName, globalStyle, nodes, edges, viewport }) => {
+  save: ({ canvasId, canvasName, globalStyle, nodes, edges, viewport, groups }) => {
     if (!canvasId) return false
 
     const data = {
@@ -118,6 +118,8 @@ export const canvasStorage = {
       nodes,
       edges,
       viewport,
+      // 选区打组：组名映射 { [signature]: { name } }
+      groups: groups || {},
       savedAt: Date.now(),
     }
 

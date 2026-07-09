@@ -1,5 +1,6 @@
+import useCanvasStore from "@/store/canvasStore";
 import { PlusOutlined } from "@ant-design/icons";
-import { Handle, Position, useStore } from "@xyflow/react";
+import { Handle, Position, useNodeId, useStore } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 /**
@@ -46,6 +47,14 @@ const PlusHandle = ({ type, position, id, color = "#1890ff" }) => {
   const dir = isRight ? 1 : -1; // 向外为正方向
   const zoom = useStore((s) => s.transform[2]);
 
+  // 当前节点是否处于激活组中：是则隐藏节点独立加号手柄，只保留组 Handle
+  const nodeId = useNodeId();
+  const hiddenByGroup = useCanvasStore(
+    (s) =>
+      s.activeGroupNodeIds.length >= 2 &&
+      s.activeGroupNodeIds.includes(nodeId),
+  );
+
   // 监听所属节点的 hover，使左右两侧引导点同时出现
   useEffect(() => {
     const nodeEl = zoneRef.current?.closest(".react-flow__node");
@@ -91,8 +100,8 @@ const PlusHandle = ({ type, position, id, color = "#1890ff" }) => {
     setDot({ x: 0, y: 0 });
   }, []);
 
-  // 圆点是否可见：节点被 hover，或光标在感应区内
-  const visible = nodeHover || inZone;
+  // 圆点是否可见：节点被 hover 或光标在感应区内；组激活时隐藏该节点独立手柄
+  const visible = (nodeHover || inZone) && !hiddenByGroup;
   // 圆点位置：跟随时用实时偏移；否则停靠在外侧
   const dotX = inZone ? dot.x : dir * REST_OUT;
   const dotY = inZone ? dot.y : 0;
@@ -126,8 +135,10 @@ const PlusHandle = ({ type, position, id, color = "#1890ff" }) => {
           background: "transparent",
           minWidth: 0,
           minHeight: 0,
-          cursor: "crosshair",
+          cursor: hiddenByGroup ? "default" : "crosshair",
           clipPath,
+          // 组激活时禁用该节点独立手柄的连线交互（保留 Handle 以维持边锚点）
+          pointerEvents: hiddenByGroup ? "none" : "auto",
           zIndex: 5,
         }}
       />

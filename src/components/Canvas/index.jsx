@@ -17,6 +17,7 @@ import CustomEdge from "./CustomEdge";
 import { nodeTypes } from "./CustomNode";
 import MagnetHandle from "./CustomPoint/MagnetHandle";
 import { useConnectionMagnet } from "./CustomPoint/useConnectionMagnet";
+import SelectionGroup from "./SelectionGroup";
 import SideBar from "./SideBar";
 
 import { getCanvasDetail } from "@/api";
@@ -73,6 +74,9 @@ const CanvasContent = () => {
   const setGlobalStyle = useStyleStore((state) => state.setGlobalStyle);
   const fetchStyleList = useStyleStore((state) => state.fetchStyleList);
 
+  // 按住 Space 时临时切换为「拖动平移」模式（松开恢复默认左键框选）
+  const [spacePan, setSpacePan] = useState(false);
+
   // 侧边栏节点选中回调：选中节点并将其居中定位至画布视口
   const handleSidebarNodeSelect = useCallback(
     (nodeId) => {
@@ -102,14 +106,17 @@ const CanvasContent = () => {
     [nodes, setCenter],
   );
 
-  // ReactFlow selection change → 同步到侧边栏高亮
+  // ReactFlow selection change → 同步到侧边栏高亮 + 选区打组状态
   const handleSelectionChange = useCallback(
     ({ nodes: selectedNodes }) => {
+      const store = useCanvasStore.getState();
+      // 同步选区打组：≥2 个节点显示组叠加层，否则取消
+      store.syncSelectionGroup(selectedNodes.map((n) => n.id));
+
       if (selectedNodes.length === 1) {
         setSelectedNode(selectedNodes[0].id);
       } else if (selectedNodes.length === 0) {
         // 仅当明确清空选区时才清空 selectedNodeId，避免与其他逻辑冲突
-        const store = useCanvasStore.getState();
         store.clearSelection();
       }
     },
@@ -535,6 +542,27 @@ const CanvasContent = () => {
     removeNode,
   ]);
 
+  // Space 键监听：按下切换为平移模式，松开恢复框选模式
+  useEffect(() => {
+    const handleSpaceDown = (e) => {
+      if (e.code !== "Space" && e.key !== " ") return;
+      // 输入框/可编辑区域内的空格不应触发平移
+      if (isEditableElement(e.target)) return;
+      e.preventDefault();
+      setSpacePan((prev) => (prev ? prev : true));
+    };
+    const handleSpaceUp = (e) => {
+      if (e.code !== "Space" && e.key !== " ") return;
+      setSpacePan(false);
+    };
+    window.addEventListener("keydown", handleSpaceDown);
+    window.addEventListener("keyup", handleSpaceUp);
+    return () => {
+      window.removeEventListener("keydown", handleSpaceDown);
+      window.removeEventListener("keyup", handleSpaceUp);
+    };
+  }, []);
+
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
@@ -583,8 +611,9 @@ const CanvasContent = () => {
       height: "100%",
       marginLeft: isSidebarOpen ? "280px" : "0",
       transition: "margin-left 0.3s ease",
+      cursor: spacePan ? "grab" : "default",
     }),
-    [isSidebarOpen],
+    [isSidebarOpen, spacePan],
   );
 
   return (
@@ -638,8 +667,18 @@ const CanvasContent = () => {
             style: { stroke: "#434343", strokeWidth: 2 },
           }}
           deleteKeyCode={null}
-          selectionKeyCode={["Shift"]}
           multiSelectionKeyCode={["Meta", "Ctrl"]}
+          {...(spacePan
+            ? {
+                // Space 按下：左键拖动平移画布，禁用框选
+                panOnDrag: true,
+                selectionOnDrag: false,
+              }
+            : {
+                // 默认：左键拖动框选，仅中键/右键平移画布
+                panOnDrag: [1, 2],
+                selectionOnDrag: true,
+              })}
           panOnScroll
           proOptions={{ hideAttribution: true }}
           style={{
@@ -652,6 +691,8 @@ const CanvasContent = () => {
             size={2}
             color="rgba(255, 255, 255, 0.08)"
           />
+          {/* 选区打组叠加层（虚线选框 + 组名 + 组 Handle） */}
+          <SelectionGroup />
         </ReactFlow>
       </div>
 

@@ -3,18 +3,22 @@ import StyleSelect from "@/components/Canvas/CanvasHeader/StyleSelect.jsx";
 import useCanvasStore from "@/store/canvasStore";
 import { getAspectRatioSize } from "@/utils/aspectRatioMap";
 import { buildMediaBody } from "@/utils/generateParams.js";
+import {
+  adaptModel,
+  calcPoint,
+  getParamLabel,
+  getValidOptions,
+  migrateParams,
+} from "@/utils/modelAdapter";
 import { validateAssetLimits } from "@/utils/modelAssetLimit";
+import {
+  ensureModerationForAssets,
+  isModerationRequired,
+} from "@/utils/moderation";
 import {
   getParamChineseName,
   getParamValueChinese,
 } from "@/utils/paramsMap.js";
-import {
-  adaptModel,
-  calcPoint,
-  migrateParams,
-  getValidOptions,
-  getParamLabel,
-} from "@/utils/modelAdapter";
 import {
   ArrowUpOutlined,
   LoadingOutlined,
@@ -23,7 +27,7 @@ import {
   StarOutlined,
 } from "@ant-design/icons";
 import { Button, Dropdown, message, Popover, Radio, Space, Switch } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 // 比例数据源：固定 key、展示文案、宽高比值
 // 底层公式：height = width ÷ (w / h)
@@ -103,7 +107,7 @@ const BottomParamToolbar = ({
   const modelSpec = adaptModel(rawModel);
   const propList = modelSpec?.propSpecs || [];
 
-  // 调用 AI 生成接口
+  // 调用 AI 生成接口（审核通过后再执行生成）
   const handleApiSubmit = async () => {
     if (!editor || !activeNodeId) return;
 
@@ -140,6 +144,21 @@ const BottomParamToolbar = ({
       return;
     }
 
+    // ========== 审核阶段 ==========
+    const company = rawModel?.model_company ?? "";
+    // 仅视频节点 + 模型需要审核（is_check === 1）时才发起审核
+    if (nodeType === "video" && isModerationRequired(rawModel?.is_check)) {
+      const auditResults = await ensureModerationForAssets(refAssetList, company);
+      const failedAssets = auditResults.filter(
+        (r) => r.record && r.record.status !== "approved",
+      );
+      if (failedAssets.length > 0) {
+        message.warning("素材审核未通过，请替换后重试");
+        return;
+      }
+    }
+    // ========== 审核通过，继续生成 ==========
+
     const params = {};
     propList.forEach((prop) => {
       const val = editor.data[prop.propKey];
@@ -157,7 +176,7 @@ const BottomParamToolbar = ({
       params,
       model_frame: activeFrameKey ?? "",
       refAssetList: editor.data.refAssetList || [],
-      provider: rawModel?.model_company ?? "",
+      provider: company,
       model_name: rawModel?.model_name ?? "",
       model_id: editor.data.model_id || "",
       prompt: finalPrompt,
@@ -221,6 +240,8 @@ const BottomParamToolbar = ({
 
   // 积分计算相关状态
   const [consumePoint, setConsumePoint] = useState(0);
+
+  // 审核错误提示（展示在页面，不阻塞流程）
 
   // 使用 useEffect 监听参数和模型变化，确保在 React 重新渲染后再计算
   useEffect(() => {

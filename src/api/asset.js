@@ -11,7 +11,7 @@ export const assetReview = (data) => {
  * 资产评审接口
  */
 export const getAssetReview = (params) => {
-  return get("ndex/index/getAssetReview", params);
+  return get("index/index/getAssetReview", params);
 };
 
 export default {

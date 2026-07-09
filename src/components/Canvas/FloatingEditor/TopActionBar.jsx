@@ -1,5 +1,10 @@
 import useCanvasStore from "@/store/canvasStore";
-import { CloseOutlined } from "@ant-design/icons";
+import { getAuditCache } from "@/utils/moderation";
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  CloseOutlined,
+} from "@ant-design/icons";
 import { Button, Popover } from "antd";
 import { useEffect, useState } from "react";
 
@@ -15,6 +20,7 @@ const RefImagePreviewBar = ({
   upstreamMedia,
   upstreamMediaList,
   onRemoveMedia,
+  provider,
 }) => {
   // 只保留悬浮序号切换状态
   const [hoverIdx, setHoverIdx] = useState(null);
@@ -175,7 +181,42 @@ const RefImagePreviewBar = ({
                   />
                 )}
 
-                {/* 右上角删除角标：使用antd图标组件 */}
+                {(() => {
+                  if (!provider) return null;
+                  const record = getAuditCache(imgItem.url, provider);
+                  if (!record) return null;
+                  const iconStyle = { fontSize: 12, color: "#fff" };
+                  return (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 2,
+                        left: 2,
+                        width: 16,
+                        height: 16,
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        background:
+                          record.status === "approved"
+                            ? "#52c41a"
+                            : record.status === "rejected"
+                              ? "#ff4d4f"
+                              : "#1890ff",
+                        zIndex: 10,
+                      }}
+                    >
+                      {record.status === "approved" && (
+                        <CheckCircleOutlined style={iconStyle} />
+                      )}
+                      {record.status === "rejected" && (
+                        <CloseCircleOutlined style={iconStyle} />
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div
                   style={{
                     position: "absolute",
@@ -243,6 +284,9 @@ const TopActionBar = ({
   if (!currentSelectModel && modelList.length > 0) {
     currentSelectModel = modelList[0];
   }
+
+  // 获取当前选中模型的厂商
+  const currentProvider = currentSelectModel?.model_company || null;
 
   const rawFrameStr = currentSelectModel?.model_frame || "";
   const frameArr = rawFrameStr.split(",").filter((item) => item.trim());
@@ -312,6 +356,7 @@ const TopActionBar = ({
         upstreamMedia={upstreamMedia}
         upstreamMediaList={upstreamMediaList}
         onRemoveMedia={onRemoveMedia}
+        provider={currentProvider}
       />
     </div>
   );

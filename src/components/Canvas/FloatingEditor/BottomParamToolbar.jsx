@@ -122,7 +122,7 @@ const BottomParamToolbar = ({
       "长度:",
       refAssetList.length,
       "逐项 type:",
-      refAssetList.map((a) => ({ type: a?.type, mime: a?.mime, url: a?.url }))
+      refAssetList.map((a) => ({ type: a?.type, mime: a?.mime, url: a?.url })),
     );
     const limitResult = validateAssetLimits({
       modelType: editor.data.model_type,
@@ -148,7 +148,10 @@ const BottomParamToolbar = ({
     const company = rawModel?.model_company ?? "";
     // 仅视频节点 + 模型需要审核（is_check === 1）时才发起审核
     if (nodeType === "video" && isModerationRequired(rawModel?.is_check)) {
-      const auditResults = await ensureModerationForAssets(refAssetList, company);
+      const auditResults = await ensureModerationForAssets(
+        refAssetList,
+        company,
+      );
       const failedAssets = auditResults.filter(
         (r) => r.record && r.record.status !== "approved",
       );
@@ -159,17 +162,21 @@ const BottomParamToolbar = ({
     }
     // ========== 审核通过，继续生成 ==========
 
+    // 将 editor.data 中存储的 id 替换为对应的 name 后再提交
     const params = {};
     propList.forEach((prop) => {
       const val = editor.data[prop.propKey];
       if (val === undefined || val === null || val === "") return;
-      params[prop.propKey] = val;
+      // id → name 映射
+      const matchedOption = prop.options.find((o) => o.id === val);
+      params[prop.propKey] = matchedOption?.name ?? val;
     });
 
     // 走 ref：让 PromptInputArea 从真实 DOM 解析，把原子块替换为「图片1 / 视频1」纯文本
     // 优先用 ref 拿到的纯文本；若 ref 不可用，再退回 store 的原值
     const storePrompt = editor.data.prompt || "";
-    const finalPrompt = promptInputRef?.current?.getPromptText?.() || storePrompt;
+    const finalPrompt =
+      promptInputRef?.current?.getPromptText?.() || storePrompt;
 
     const nodeData = {
       nodeType,
@@ -181,7 +188,7 @@ const BottomParamToolbar = ({
       model_id: editor.data.model_id || "",
       prompt: finalPrompt,
       negative_prompt: "",
-      team_id: editor.data.team_id || "",
+      team_id: "21",
       vip_weight: editor.data.vip_weight || "",
     };
     const body = buildMediaBody(nodeData);
